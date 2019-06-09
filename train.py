@@ -14,13 +14,13 @@ class ExperienceBatch:
 
 
 class ExperienceBuffer:
-    def __init__(self, obs_shape, max_size=100000):
-        self.max_size = max_size
+    def __init__(self, obs_shape, max_size=100_000):
         self.o1s = np.zeros((max_size,) + obs_shape)
         self.o2s = np.zeros((max_size,) + obs_shape)
         self.rs = np.zeros(max_size)
         self.acts = np.zeros(max_size)
         self.dones = np.zeros(max_size)
+        self.max_size = max_size
         self.len = 0
         self.idx = 0
 
@@ -29,15 +29,16 @@ class ExperienceBuffer:
 
     def store(self, o1, a, r, o2, done):
         self.o1s[self.idx] = o1
-        self.o2s[self.idx] = o2
-        self.rs[self.idx] = r
         self.acts[self.idx] = a
+        self.rs[self.idx] = r
+        self.o2s[self.idx] = o2
         # TODO float vs bool
         self.dones[self.idx] = done
         self.idx = (self.idx + 1) % self.max_size
-        self.len = min(self.len + 1, self.max_size)
+        if self.len < self.max_size:
+            self.len += 1
 
-    def sample(self, batch_size=256) -> ExperienceBatch:
+    def sample(self, batch_size=32) -> ExperienceBatch:
         idxs = np.random.choice(self.len, size=batch_size, replace=False)
         return ExperienceBatch(
             o1s=[self.o1s[i] for i in idxs],
@@ -49,42 +50,49 @@ class ExperienceBuffer:
 
 
 def main():
-    env = gym.make('CartPole-v0')
-    experience_buffer = ExperienceBuffer(env.observation_space.shape)
-    model = Model(env.observation_space.shape, env.action_space.n)
+    step_n = 0
+    n_start_steps = 1000
+    batch_size = 32
+    gamma = 0.99
+    eps = 0.9
 
-    n = 0
+    train_env = gym.make('CartPole-v0')
+    test_env = gym.make('CartPole-v0')
+    experience_buffer = ExperienceBuffer(train_env.observation_space.shape)
+    model = Model(train_env.observation_space.shape, train_env.action_space.n, discount=gamma, epsilon=eps)
+
+    obs1, done = train_env.reset(), False
     while True:
-        for _ in range(10):
-            obs1, done = env.reset(), False
-            while not done:
-                action = model.step(obs1, deterministic=False)
-                obs2, reward, done, info = env.step(action)
-                experience_buffer.store(obs1, action, reward, obs2, done)
-                obs1 = obs2
-            n += 1
-            print(f"Train episode {n} done")
+        action = model.step(obs1, deterministic=False)
+        obs2, reward, done, info = train_env.step(action)
+        experience_buffer.store(obs1, action, reward, obs2, done)
+        obs1 = obs2
 
-        if len(experience_buffer) < 256:
+        if done:
+            obs1, done = train_env.reset(), False
+        if len(experience_buffer) < n_start_steps:
             continue
 
-        for _ in range(100):
-            experience_batch = experience_buffer.sample()
-            loss = model.train(o1s=experience_batch.o1s,
-                        acts=experience_batch.acts,
-                        rs=experience_batch.rs,
-                        o2s=experience_batch.o2s,
-                        dones=experience_batch.dones)
-            print("Loss: {}".format(loss))
+        experience_batch = experience_buffer.sample(batch_size=batch_size)
+        model.train(o1s=experience_batch.o1s,
+                    acts=experience_batch.acts,
+                    rs=experience_batch.rs,
+                    o2s=experience_batch.o2s,
+                    dones=experience_batch.dones)
 
-        o, done = env.reset(), False
-        rewards = []
-        while not done:
-            action = model.step(o, deterministic=True)
-            obs, reward, done, info = env.step(action)
-            env.render()
-            rewards.append(reward)
-        print(sum(rewards))
+        if step_n % 500 == 0:
+            model.update_target()
+
+        if step_n % 1000 == 0:
+            obs, done = test_env.reset(), False
+            rewards = []
+            while not done:
+                action = model.step(obs, deterministic=True)
+                obs, reward, done, info = test_env.step(action)
+                rewards.append(reward)
+            print(sum(rewards))
+
+        step_n += 1
 
 
 if __name__ == '__main__':

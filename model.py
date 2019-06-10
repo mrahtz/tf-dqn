@@ -5,10 +5,12 @@ import tensorflow as tf
 from tensorflow.python.keras.layers import Dense
 
 from replay_buffer import ReplayBatch
+from utils import tensor_index
 
 
 class Model:
-    def __init__(self, obs_shape, n_actions, seed, discount, n_hidden, lr, save_dir=None):
+
+    def __init__(self, obs_shape, n_actions, seed, discount, n_hidden, lr, double_dqn, save_dir=None):
         self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
@@ -27,7 +29,9 @@ class Model:
             qs = Dense(n_actions, None)
             with tf.variable_scope('main'):
                 q1s_main = qs(h(obs1_ph))
+                q2s_main = qs(h(obs2_ph))
                 assert q1s_main.shape.as_list() == [None, n_actions]
+                assert q2s_main.shape.as_list() == [None, n_actions]
 
             h_target = Dense(n_hidden, 'relu')
             qs_target = Dense(n_actions, None)
@@ -42,9 +46,14 @@ class Model:
             pi = tf.math.argmax(q1s_main, axis=1)
             assert pi.shape.as_list() == [None]
 
-            q1_main = tf.reduce_sum(q1s_main * tf.one_hot(acts_ph, depth=n_actions), axis=1)
+            q1_main = tensor_index(q1s_main, acts_ph)
             assert q1_main.shape.as_list() == [None]
-            backup = rews_ph + discount * (1 - done_ph) * tf.reduce_max(q2s_target, axis=1)
+            if double_dqn:
+                a = tf.math.argmax(q2s_main, axis=1)
+                q_target = tensor_index(q2s_target, a)
+            else:
+                q_target = tf.reduce_max(q2s_target, axis=1)
+            backup = rews_ph + discount * (1 - done_ph) * q_target
             backup = tf.stop_gradient(backup)
             assert backup.shape.as_list() == [None]
             loss = tf.reduce_mean((q1_main - backup) ** 2)
@@ -61,8 +70,8 @@ class Model:
         self.rews_ph = rews_ph
         self.obs2_ph = obs2_ph
         self.done_ph = done_ph
-        self.q1s = q1s_main
-        self.q2s = q2s_target
+        self.q1s_main = q1s_main
+        self.q2s_target = q2s_target
         self.q1 = q1_main
         self.pi = pi
         self.loss = loss

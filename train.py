@@ -86,14 +86,14 @@ def run_test_env(make_model_fn_pkl, model_load_dir, env_id):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, n_hidden, env_id):
+def main(gamma, buffer_size, lr, render, seed, n_hidden, env_id, double_dqn):
     train_env = gym.make(env_id)
     train_env.seed(seed)
     buffer = ReplayBuffer(train_env.observation_space.shape, max_size=buffer_size)
     obs_shape = train_env.observation_space.shape
     n_actions = train_env.action_space.n
     make_model_fn = lambda **kwargs: Model(obs_shape, n_actions,
-                                           discount=gamma, lr=lr, n_hidden=n_hidden, seed=seed,
+                                           discount=gamma, lr=lr, n_hidden=n_hidden, seed=seed, double_dqn=double_dqn,
                                            **kwargs)
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = make_model_fn(save_dir=ckpt_dir)

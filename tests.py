@@ -1,18 +1,14 @@
-import pickle
 import unittest
 
 import gym
 import numpy as np
+import tensorflow as tf
 from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
-from sacred import Experiment
-from sacred.run import Run
 
-import config
 import train
 from model import Model
 from replay_buffer import ReplayBuffer, ReplayBatch
-from train import train_dqn
-from utils import tf_disable_warnings, tf_disable_deprecation_warnings
+from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index
 
 tf_disable_warnings()
 tf_disable_deprecation_warnings()
@@ -56,19 +52,26 @@ class Tests(unittest.TestCase):
         model = Model(obs_shape=(1,), n_actions=2, n_hidden=3, seed=0, discount=0.99, lr=1e-3)
         obs = [np.random.rand()]
 
-        q1s, q2s = model.sess.run([model.q1s, model.q2s], feed_dict={model.obs1_ph: [obs],
-                                                                     model.obs2_ph: [obs]})
+        q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
+                                                                                 model.obs2_ph: [obs]})
         assert_raises(AssertionError, assert_allclose, q1s, q2s)
 
         model.update_target()
-        q1s, q2s = model.sess.run([model.q1s, model.q2s], feed_dict={model.obs1_ph: [obs],
-                                                                     model.obs2_ph: [obs]})
+        q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
+                                                                                 model.obs2_ph: [obs]})
         assert_allclose(q1s, q2s)
+
+    def test_tensor_index(self):
+        sess = tf.Session()
+        params = tf.constant([[1, 2, 3], [4, 5, 6]])
+        indices = tf.constant([0, 1])
+        result = sess.run(tensor_index(params, indices))
+        np.testing.assert_array_equal(result, [1, 5])
 
 
 class EndToEnd(unittest.TestCase):
     def test_cartpole(self):
-        r = train.ex.run(config_updates={'train_n_steps': 8000, 'seed': 0})
+        r = train.ex.run(config_updates={'train_n_steps': 20000, 'seed': 0})
         model = r.result
 
         env = gym.make('CartPole-v0')

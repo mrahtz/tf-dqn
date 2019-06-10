@@ -25,29 +25,29 @@ class Model:
 
             h = Dense(n_hidden, 'relu')
             qs = Dense(n_actions, None)
-            with tf.variable_scope('q1s'):
-                q1s = qs(h(obs1_ph))
-                assert q1s.shape.as_list() == [None, n_actions]
+            with tf.variable_scope('main'):
+                q1s_main = qs(h(obs1_ph))
+                assert q1s_main.shape.as_list() == [None, n_actions]
 
             h_target = Dense(n_hidden, 'relu')
             qs_target = Dense(n_actions, None)
-            with tf.variable_scope('q2s'):
-                q2s = qs_target(h_target(obs2_ph))
-                assert q2s.shape.as_list() == [None, n_actions]
+            with tf.variable_scope('target'):
+                q2s_target = qs_target(h_target(obs2_ph))
+                assert q2s_target.shape.as_list() == [None, n_actions]
 
-            params_target = tf.trainable_variables('q2s')
-            params = tf.trainable_variables('q1s')
+            params = tf.trainable_variables('main')
+            params_target = tf.trainable_variables('target')
             target_update_ops = [param_target.assign(param) for param_target, param in zip(params_target, params)]
 
-            pi = tf.math.argmax(q1s, axis=1)
+            pi = tf.math.argmax(q1s_main, axis=1)
             assert pi.shape.as_list() == [None]
 
-            q1 = tf.reduce_sum(q1s * tf.one_hot(acts_ph, depth=n_actions), axis=1)
-            assert q1.shape.as_list() == [None]
-            backup = rews_ph + discount * (1 - done_ph) * tf.reduce_max(q2s, axis=1)
+            q1_main = tf.reduce_sum(q1s_main * tf.one_hot(acts_ph, depth=n_actions), axis=1)
+            assert q1_main.shape.as_list() == [None]
+            backup = rews_ph + discount * (1 - done_ph) * tf.reduce_max(q2s_target, axis=1)
             backup = tf.stop_gradient(backup)
             assert backup.shape.as_list() == [None]
-            loss = tf.reduce_mean((q1 - backup) ** 2)
+            loss = tf.reduce_mean((q1_main - backup) ** 2)
             assert loss.shape.as_list() == []
             optimizer = tf.train.AdamOptimizer(learning_rate=lr)
             train_op = optimizer.minimize(loss)
@@ -61,9 +61,9 @@ class Model:
         self.rews_ph = rews_ph
         self.obs2_ph = obs2_ph
         self.done_ph = done_ph
-        self.q1s = q1s
-        self.q2s = q2s
-        self.q1 = q1
+        self.q1s = q1s_main
+        self.q2s = q2s_target
+        self.q1 = q1_main
         self.pi = pi
         self.loss = loss
         self.train_op = train_op

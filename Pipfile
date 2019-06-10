@@ -10,6 +10,7 @@ gym = "*"
 tensorflow = "*"
 sacred = "*"
 easy-tf-log = "*"
+cloudpickle = "*"
 
 [requires]
 python_version = "3"

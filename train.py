@@ -1,3 +1,7 @@
+import multiprocessing
+import os
+
+import cloudpickle as cloudpickle
 import easy_tf_log
 import gym
 import numpy as np
@@ -70,8 +74,15 @@ def cfg():
     n_start_steps = 1000
     update_target_every_n_steps = 500
     log_every_n_steps = 100
+    checkpoint_every_n_steps = 100
     buffer_size = 50000
     lr = 5e-4
+    render = False
+
+
+@ex.named_config
+def render():
+    render = True
 
 
 def get_random_action_prob(step_n):
@@ -80,8 +91,14 @@ def get_random_action_prob(step_n):
 
 @ex.capture
 @LogFileWriter(ex)
-def train(experience_buffer: ExperienceBuffer, model: Model, test_env, train_env, batch_size, n_start_steps, update_target_every_n_steps,
-          log_every_n_steps):
+def train(experience_buffer: ExperienceBuffer,
+          model: Model,
+          train_env,
+          batch_size,
+          n_start_steps,
+          update_target_every_n_steps,
+          log_every_n_steps,
+          checkpoint_every_n_steps):
     logger = easy_tf_log.Logger()
     logger.set_log_dir(observer.dir)
     step_n = 0
@@ -116,31 +133,50 @@ def train(experience_buffer: ExperienceBuffer, model: Model, test_env, train_env
             model.update_target()
 
         if step_n % log_every_n_steps == 0:
-            log_stats(logger, model, random_action_prob, step_n, test_env, episode_rewards, experience_buffer)
+            log_stats(random_action_prob, step_n, episode_rewards, experience_buffer)
+
+        if step_n % checkpoint_every_n_steps == 0:
+            model.save()
 
         step_n += 1
 
 
-def log_stats(logger, model, random_action_prob, step_n, test_env, train_episode_rewards, buffer):
-    obs, done = test_env.reset(), False
-    rewards = []
-    while not done:
-        action = model.step(obs, random_action_prob=0)
-        obs, reward, done, info = test_env.step(action)
-        rewards.append(reward)
+def log_stats(random_action_prob, step_n, train_episode_rewards, buffer):
     print(f"Step: {step_n}")
     print("Random action probability: {:.2f}".format(random_action_prob))
     print("Last 10 train episode mean reward sum:", np.mean(train_episode_rewards[-10:]))
-    print("Test episode reward sum:", sum(rewards))
     print("Buffer size:", len(buffer))
     print()
-    logger.logkv('reward_sum', sum(rewards))
+
+
+def run_test_env(make_model_fn_pkl, model_load_dir):
+    model = cloudpickle.loads(make_model_fn_pkl)()
+    test_env = gym.make('CartPole-v0')
+    while True:
+        model.load(model_load_dir)
+        obs, done = test_env.reset(), False
+        rewards = []
+        while not done:
+            action = model.step(obs, random_action_prob=0)
+            test_env.render()
+            obs, reward, done, info = test_env.step(action)
+            rewards.append(reward)
+        print("Test episode reward:", sum(rewards))
 
 
 @ex.automain
-def main(gamma, buffer_size, lr):
+def main(gamma, buffer_size, lr, render):
     train_env = gym.make('CartPole-v0')
-    test_env = gym.make('CartPole-v0')
     experience_buffer = ExperienceBuffer(train_env.observation_space.shape, max_size=buffer_size)
-    model = Model(train_env.observation_space.shape, train_env.action_space.n, discount=gamma, lr=lr)
-    train(experience_buffer, model, test_env, train_env)
+    make_model_fn = lambda **kwargs: Model(train_env.observation_space.shape,
+                                           train_env.action_space.n,
+                                           discount=gamma,
+                                           lr=lr,
+                                           **kwargs)
+    ckpt_dir = os.path.join(observer.dir, 'checkpoints')
+    model = make_model_fn(save_dir=ckpt_dir)
+    model.save()
+    if render:
+        ctx = multiprocessing.get_context('spawn')
+        ctx.Process(target=run_test_env, args=(cloudpickle.dumps(make_model_fn), ckpt_dir)).start()
+    train(experience_buffer, model, train_env)

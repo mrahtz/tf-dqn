@@ -1,11 +1,14 @@
+import os
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.layers import Dense
 
 
 class Model:
-    def __init__(self, obs_shape, n_actions, seed=0, discount=0.99, n_hidden=64, lr=1e-5):
+    def __init__(self, obs_shape, n_actions, seed=0, discount=0.99, n_hidden=64, lr=1e-5, save_dir=None):
         self.n_actions = n_actions
+        self.save_dir = save_dir
 
         tf.random.set_random_seed(seed)
         self.o1_ph = tf.placeholder(tf.float32, (None,) + obs_shape, name='o1')
@@ -47,6 +50,8 @@ class Model:
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
+        self.saver = tf.train.Saver()
+
     def step(self, obs, random_action_prob):
         if np.random.rand() < random_action_prob:
             return np.random.choice(self.n_actions)
@@ -66,3 +71,10 @@ class Model:
                                                                        self.o2_ph: o2s,
                                                                        self.done_ph: dones})
         return loss
+
+    def save(self):
+        self.saver.save(self.sess, os.path.join(self.save_dir, 'model'))
+
+    def load(self, load_dir):
+        ckpt = tf.train.latest_checkpoint(load_dir)
+        self.saver.restore(self.sess, ckpt)

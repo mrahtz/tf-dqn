@@ -33,11 +33,8 @@ def cfg():
     lr = 5e-4
     render = False
     n_hidden = 64
-
-
-@ex.named_config
-def render():
-    render = True
+    render=False
+    env_id = 'CartPole-v0'
 
 
 @ex.capture
@@ -86,10 +83,10 @@ def train(replay_buffer: ReplayBuffer,
 
         step_n += 1
 
-
-def run_test_env(make_model_fn_pkl, model_load_dir):
+@ex.capture()
+def run_test_env(make_model_fn_pkl, model_load_dir, env_id):
     model = cloudpickle.loads(make_model_fn_pkl)()
-    test_env = gym.make('CartPole-v0')
+    test_env = gym.make(env_id)
     while True:
         model.load(model_load_dir)
         obs, done = test_env.reset(), False
@@ -103,8 +100,8 @@ def run_test_env(make_model_fn_pkl, model_load_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, n_hidden):
-    train_env = gym.make('CartPole-v0')
+def main(gamma, buffer_size, lr, render, seed, n_hidden, env_id):
+    train_env = gym.make(env_id)
     experience_buffer = ReplayBuffer(train_env.observation_space.shape, max_size=buffer_size)
     make_model_fn = lambda **kwargs: Model(train_env.observation_space.shape,
                                            train_env.action_space.n,

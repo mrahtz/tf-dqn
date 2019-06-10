@@ -9,50 +9,52 @@ from replay_buffer import ReplayBatch
 
 class Model:
     def __init__(self, obs_shape, n_actions, seed, discount, n_hidden, lr, save_dir=None):
+        self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
 
-        tf.random.set_random_seed(seed)
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            tf.random.set_random_seed(seed)
 
-        obs1_ph = tf.placeholder(tf.float32, (None,) + obs_shape, name='o1')
-        obs2_ph = tf.placeholder(tf.float32, (None,) + obs_shape, name='o2')
-        acts_ph = tf.placeholder(tf.int32, (None,), name='a1')
-        rews_ph = tf.placeholder(tf.float32, (None,), name='r')
-        done_ph = tf.placeholder(tf.float32, (None,), name='done')
+            obs1_ph = tf.placeholder(tf.float32, (None,) + obs_shape, name='o1')
+            obs2_ph = tf.placeholder(tf.float32, (None,) + obs_shape, name='o2')
+            acts_ph = tf.placeholder(tf.int32, (None,), name='a1')
+            rews_ph = tf.placeholder(tf.float32, (None,), name='r')
+            done_ph = tf.placeholder(tf.float32, (None,), name='done')
 
-        h = Dense(n_hidden, 'relu')
-        qs = Dense(n_actions, None)
-        with tf.variable_scope('q1s'):
-            q1s = qs(h(obs1_ph))
-            assert q1s.shape.as_list() == [None, n_actions]
+            h = Dense(n_hidden, 'relu')
+            qs = Dense(n_actions, None)
+            with tf.variable_scope('q1s'):
+                q1s = qs(h(obs1_ph))
+                assert q1s.shape.as_list() == [None, n_actions]
 
-        h_target = Dense(n_hidden, 'relu')
-        qs_target = Dense(n_actions, None)
-        with tf.variable_scope('q2s'):
-            q2s = qs_target(h_target(obs2_ph))
-            assert q2s.shape.as_list() == [None, n_actions]
+            h_target = Dense(n_hidden, 'relu')
+            qs_target = Dense(n_actions, None)
+            with tf.variable_scope('q2s'):
+                q2s = qs_target(h_target(obs2_ph))
+                assert q2s.shape.as_list() == [None, n_actions]
 
-        params_target = tf.trainable_variables('q2s')
-        params = tf.trainable_variables('q1s')
-        target_update_ops = [param_target.assign(param)
-                                  for param_target, param in zip(params_target, params)]
+            params_target = tf.trainable_variables('q2s')
+            params = tf.trainable_variables('q1s')
+            target_update_ops = [param_target.assign(param) for param_target, param in zip(params_target, params)]
 
-        pi = tf.math.argmax(q1s, axis=1)
-        assert pi.shape.as_list() == [None]
+            pi = tf.math.argmax(q1s, axis=1)
+            assert pi.shape.as_list() == [None]
 
-        q1 = tf.reduce_sum(q1s * tf.one_hot(acts_ph, depth=n_actions), axis=1)
-        assert q1.shape.as_list() == [None]
-        backup = rews_ph + discount * (1 - done_ph) * tf.reduce_max(q2s, axis=1)
-        backup = tf.stop_gradient(backup)
-        assert backup.shape.as_list() == [None]
-        loss = tf.reduce_mean((q1 - backup) ** 2)
-        assert loss.shape.as_list() == []
-        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        train_op = optimizer.minimize(loss)
+            q1 = tf.reduce_sum(q1s * tf.one_hot(acts_ph, depth=n_actions), axis=1)
+            assert q1.shape.as_list() == [None]
+            backup = rews_ph + discount * (1 - done_ph) * tf.reduce_max(q2s, axis=1)
+            backup = tf.stop_gradient(backup)
+            assert backup.shape.as_list() == [None]
+            loss = tf.reduce_mean((q1 - backup) ** 2)
+            assert loss.shape.as_list() == []
+            optimizer = tf.train.AdamOptimizer(learning_rate=lr)
+            train_op = optimizer.minimize(loss)
 
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
-        saver = tf.train.Saver()
+            sess = tf.Session()
+            sess.run(tf.global_variables_initializer())
+            saver = tf.train.Saver()
 
         self.obs1_ph = obs1_ph
         self.acts_ph = acts_ph
@@ -68,6 +70,31 @@ class Model:
         self.sess = sess
         self.saver = saver
         self.target_update_ops = target_update_ops
+
+    def save_args(self, locals):
+        locals = dict(locals)
+        self.args = locals
+        del self.args['self']
+        self.args['save_dir'] = None
+
+    def __getstate__(self):
+        with self.graph.as_default():
+            vars = tf.trainable_variables()
+        names = [v.name for v in vars]
+        values = self.sess.run(vars)
+        params = {k: v for k, v in zip(names, values)}
+        state = self.args, params
+        return state
+
+    def __setstate__(self, state):
+        args, params = state
+        self.__init__(**args)
+        with self.graph.as_default():
+            ops = []
+            for var in tf.trainable_variables():
+                assign = var.assign(params[var.name])
+                ops.append(assign)
+            self.sess.run(ops)
 
     def step(self, obs, random_action_prob):
         if np.random.rand() < random_action_prob:
@@ -96,5 +123,5 @@ class Model:
         self.saver.save(self.sess, os.path.join(self.save_dir, 'model'))
 
     def load(self, load_dir):
-
+        ckpt = tf.train.latest_checkpoint(load_dir)
         self.saver.restore(self.sess, ckpt)

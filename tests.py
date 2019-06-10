@@ -1,10 +1,17 @@
+import pickle
 import unittest
 
+import gym
 import numpy as np
 from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
+from sacred import Experiment
+from sacred.run import Run
 
+import config
+import train
 from model import Model
 from replay_buffer import ReplayBuffer, ReplayBatch
+from train import train_dqn
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings
 
 tf_disable_warnings()
@@ -57,6 +64,24 @@ class Tests(unittest.TestCase):
         q1s, q2s = model.sess.run([model.q1s, model.q2s], feed_dict={model.obs1_ph: [obs],
                                                                      model.obs2_ph: [obs]})
         assert_allclose(q1s, q2s)
+
+
+class EndToEnd(unittest.TestCase):
+    def test_cartpole(self):
+        r = train.ex.run(config_updates={'train_n_steps': 8000, 'seed': 0})
+        model = r.result
+
+        env = gym.make('CartPole-v0')
+        env.seed(0)
+        episode_rewards = []
+        for _ in range(5):
+            obs, done = env.reset(), False
+            rewards = []
+            while not done:
+                obs, reward, done, info = env.step(model.step(obs, random_action_prob=0))
+                rewards.append(reward)
+            episode_rewards.append(sum(rewards))
+        self.assertEqual(min(episode_rewards), 200)
 
 
 if __name__ == '__main__':

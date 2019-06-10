@@ -8,6 +8,8 @@ verify_ssl = true
 [packages]
 gym = "*"
 tensorflow = "*"
+sacred = "*"
+easy-tf-log = "*"
 
 [requires]
 python_version = "3"

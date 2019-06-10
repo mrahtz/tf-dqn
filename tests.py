@@ -27,7 +27,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(samples, {2, 3})
 
     def test_model_train(self):
-        model = Model(obs_shape=(1,), n_actions=2)
+        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3)
         obs1 = [np.random.rand()]
         obs2 = [np.random.rand()]
         act = 0

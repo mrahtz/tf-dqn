@@ -3,9 +3,11 @@ from tensorflow.python.keras.layers import Dense, Conv2D, Lambda, Flatten
 import tensorflow as tf
 
 
-def MLPPolicy(obs_shape, n_actions, n_hidden=64):
+def MLPPolicy(obs_shape, n_actions, hidden=(64, 64)):
     obs = Input(shape=obs_shape)
-    h = Dense(n_hidden, 'relu')(obs)
+    h = obs
+    for n in hidden:
+        h = Dense(n, 'relu')(h)
     qs = Dense(n_actions, None)(h)
     model = Model(inputs=obs, outputs=qs)
     return model

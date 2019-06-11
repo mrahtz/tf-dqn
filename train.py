@@ -1,8 +1,6 @@
 import multiprocessing
 import os
-import pickle
 
-import cloudpickle as cloudpickle
 import easy_tf_log
 import gym
 import numpy as np
@@ -76,13 +74,12 @@ def train_dqn(buffer: ReplayBuffer,
 
         step_n += 1
 
-def run_test_env(make_model_fn_pkl, model_load_dir, render, log_dir, env):
-    model = cloudpickle.loads(make_model_fn_pkl)()
+
+def run_test_env(model, model_load_dir, render, log_dir, env):
     logger = easy_tf_log.Logger(log_dir)
     while True:
         model.load(model_load_dir)
-        obs, done = env.reset(), False
-        rewards = []
+        obs, done, rewards = env.reset(), False, []
         while not done:
             action = model.step(obs, random_action_prob=0)
             if render:
@@ -100,21 +97,22 @@ def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn):
     env.seed(seed)
     if isinstance(env.unwrapped, AtariEnv):
         env = atari_preprocess(env)
-        policy = CNNPolicy
+        policy_fn = CNNPolicy
     else:
-        policy = MLPPolicy
+        policy_fn = MLPPolicy
+
     buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     obs_shape = env.observation_space.shape
     n_actions = env.action_space.n
-    make_model_fn = lambda **kwargs: Model(policy, obs_shape, n_actions,
-                                           discount=gamma, lr=lr, seed=seed, double_dqn=double_dqn,
-                                           **kwargs)
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
-    model = make_model_fn(save_dir=ckpt_dir)
+    model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
+                  discount=gamma, lr=lr, seed=seed,double_dqn=double_dqn)
     model.save()
+
     ctx = multiprocessing.get_context('spawn')
-    ctx.Process(target=run_test_env,
-                args=(cloudpickle.dumps(make_model_fn), ckpt_dir, render, os.path.join(observer.dir, 'test_env'), env)).start()
+    test_log_dir = os.path.join(observer.dir, 'test_env')
+    ctx.Process(target=run_test_env, args=(model, ckpt_dir, render, test_log_dir, env)).start()
+
     train_dqn(buffer, model, env)
 
     return model

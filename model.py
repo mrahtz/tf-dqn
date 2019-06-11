@@ -10,7 +10,7 @@ from utils import tensor_index
 
 class Model:
 
-    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, n_hidden, lr, double_dqn, save_dir=None):
+    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, lr, double_dqn, save_dir=None):
         self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
@@ -57,7 +57,9 @@ class Model:
             loss = tf.reduce_mean((q1_main - backup) ** 2)
             assert loss.shape.as_list() == []
             optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-            train_op = optimizer.minimize(loss)
+            grads_and_vars = optimizer.compute_gradients(loss, var_list=tf.trainable_variables('main'))
+            grads_and_vars_clipped = [(tf.clip_by_norm(grad, 10), var) for grad, var in grads_and_vars]
+            train_op = optimizer.apply_gradients(grads_and_vars_clipped)
 
             sess = tf.Session()
             sess.run(tf.global_variables_initializer())

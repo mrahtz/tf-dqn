@@ -1,8 +1,8 @@
 import os
+import time
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.keras.layers import Dense
 
 from replay_buffer import ReplayBatch
 from utils import tensor_index
@@ -10,7 +10,7 @@ from utils import tensor_index
 
 class Model:
 
-    def __init__(self, obs_shape, n_actions, seed, discount, n_hidden, lr, double_dqn, save_dir=None):
+    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, n_hidden, lr, double_dqn, save_dir=None):
         self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
@@ -25,18 +25,16 @@ class Model:
             rews_ph = tf.placeholder(tf.float32, (None,), name='r')
             done_ph = tf.placeholder(tf.float32, (None,), name='done')
 
-            h = Dense(n_hidden, 'relu')
-            qs = Dense(n_actions, None)
             with tf.variable_scope('main'):
-                q1s_main = qs(h(obs1_ph))
-                q2s_main = qs(h(obs2_ph))
+                policy = policy_fn(obs_shape, n_actions)
+                q1s_main = policy(obs1_ph)
+                q2s_main = policy(obs2_ph)
                 assert q1s_main.shape.as_list() == [None, n_actions]
                 assert q2s_main.shape.as_list() == [None, n_actions]
 
-            h_target = Dense(n_hidden, 'relu')
-            qs_target = Dense(n_actions, None)
             with tf.variable_scope('target'):
-                q2s_target = qs_target(h_target(obs2_ph))
+                policy = policy_fn(obs_shape, n_actions)
+                q2s_target = policy(obs2_ph)
                 assert q2s_target.shape.as_list() == [None, n_actions]
 
             params = tf.trainable_variables('main')
@@ -129,7 +127,8 @@ class Model:
         return loss
 
     def save(self):
-        self.saver.save(self.sess, os.path.join(self.save_dir, 'model'))
+        save_id = int(time.time())
+        self.saver.save(self.sess, os.path.join(self.save_dir, 'model'), save_id)
 
     def load(self, load_dir):
         ckpt = tf.train.latest_checkpoint(load_dir)

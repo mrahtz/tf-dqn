@@ -7,6 +7,7 @@ from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
 
 import train
 from model import Model
+from policies import MLPPolicy
 from replay_buffer import ReplayBuffer, ReplayBatch
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index
 
@@ -38,7 +39,7 @@ class Tests(unittest.TestCase):
         buf.store(obs1=value, acts=None, rews=None, obs2=None, done=None)
 
     def test_model_train(self):
-        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, n_hidden=64, seed=0, discount=0.99)
+        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, policy_fn=MLPPolicy)
         obs1 = [np.random.rand()]
         obs2 = [np.random.rand()]
         act = 0
@@ -49,7 +50,7 @@ class Tests(unittest.TestCase):
         assert_approx_equal(model.q(obs1, act), rew, significant=3)
 
     def test_model_update_target(self):
-        model = Model(obs_shape=(1,), n_actions=2, n_hidden=3, seed=0, discount=0.99, lr=1e-3)
+        model = Model(obs_shape=(1,), n_actions=2, seed=0, discount=0.99, lr=1e-3, policy_fn=MLPPolicy)
         obs = [np.random.rand()]
 
         q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],

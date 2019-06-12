@@ -7,8 +7,8 @@ def MLPPolicy(obs_shape, n_actions, hidden=(64, 64)):
     obs = Input(shape=obs_shape)
     h = obs
     for n in hidden:
-        h = Dense(n, 'relu')(h)
-    qs = Dense(n_actions, None)(h)
+        h = Dense(n, activation='relu')(h)
+    qs = Dense(n_actions, activation=None)(h)
     model = Model(inputs=obs, outputs=qs)
     return model
 

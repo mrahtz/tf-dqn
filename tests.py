@@ -1,4 +1,5 @@
 import unittest
+from functools import partial
 
 import gym
 import numpy as np
@@ -60,20 +61,25 @@ class UnitTests(unittest.TestCase):
 
 class EndToEnd(unittest.TestCase):
     def test_cartpole(self):
-        r = train.ex.run(config_updates={'train_n_steps': 20000, 'seed': 0})
+        policy_fn = partial(MLPPolicy, hidden=[64])
+        r = train.ex.run(config_updates={'train_n_steps': 30_000, 'seed': 0, 'policy_fn': policy_fn})
         model = r.result
 
         env = gym.make('CartPole-v0')
         env.seed(0)
-        episode_rewards = []
-        for _ in range(5):
-            obs, done = env.reset(), False
-            rewards = []
-            while not done:
-                obs, reward, done, info = env.step(model.step(obs, random_action_prob=0))
-                rewards.append(reward)
-            episode_rewards.append(sum(rewards))
+        episode_rewards = run_test_episodes(env, model)
         self.assertEqual(min(episode_rewards), 200)
+
+
+def run_test_episodes(env, model):
+    episode_rewards = []
+    for _ in range(5):
+        obs, done, rewards = env.reset(), False, []
+        while not done:
+            obs, reward, done, info = env.step(model.step(obs, random_action_prob=0))
+            rewards.append(reward)
+        episode_rewards.append(sum(rewards))
+    return episode_rewards
 
 
 def check_main_target_different(model):

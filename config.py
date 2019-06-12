@@ -13,5 +13,4 @@ params = dict(
     train_n_steps=100000,
     seed=0,
     double_dqn=False,
-    dueling_dqn=False
 )

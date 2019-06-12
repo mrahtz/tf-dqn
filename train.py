@@ -92,18 +92,15 @@ def run_test_env(model, model_load_dir, render, log_dir, env):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling_dqn):
+def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, policy_fn=None):
     env = gym.make(env_id)
     env.seed(seed)
     if isinstance(env.unwrapped, AtariEnv):
         env = atari_preprocess(env)
-        if dueling_dqn:
-            raise RuntimeError()
-        else:
+
+    if policy_fn is None:
+        if isinstance(env.unwrapped, AtariEnv):
             policy_fn = CNNPolicy
-    else:
-        if dueling_dqn:
-            policy_fn = DuelingMLPPolicy
         else:
             policy_fn = MLPPolicy
 

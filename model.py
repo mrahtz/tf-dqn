@@ -79,6 +79,8 @@ class Model:
         self.sess = sess
         self.saver = saver
         self.target_update_ops = target_update_ops
+       
+        self.update_target()
 
     def save_args(self, locals):
         locals = dict(locals)

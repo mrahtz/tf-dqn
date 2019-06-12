@@ -15,7 +15,7 @@ tf_disable_warnings()
 tf_disable_deprecation_warnings()
 
 
-class Tests(unittest.TestCase):
+class UnitTests(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
 
@@ -43,6 +43,9 @@ class Tests(unittest.TestCase):
 
     def test_model_update_target(self):
         model = get_model()
+        check_main_target_same(model)
+        batch = ReplayBatch(obs1=[[1]], acts=[1], rews=[1], obs2=[[1]], done=[True])
+        model.train(batch)
         check_main_target_different(model)
         model.update_target()
         check_main_target_same(model)

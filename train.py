@@ -11,7 +11,7 @@ from sacred.stflow import LogFileWriter
 
 import config
 from model import Model
-from policies import MLPPolicy, CNNPolicy
+from policies import MLPPolicy, CNNPolicy, DuelingMLPPolicy
 from preprocessing import atari_preprocess
 from replay_buffer import ReplayBuffer
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings
@@ -92,14 +92,20 @@ def run_test_env(model, model_load_dir, render, log_dir, env):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn):
+def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling_dqn):
     env = gym.make(env_id)
     env.seed(seed)
     if isinstance(env.unwrapped, AtariEnv):
         env = atari_preprocess(env)
-        policy_fn = CNNPolicy
+        if dueling_dqn:
+            raise RuntimeError()
+        else:
+            policy_fn = CNNPolicy
     else:
-        policy_fn = MLPPolicy
+        if dueling_dqn:
+            policy_fn = DuelingMLPPolicy
+        else:
+            policy_fn = MLPPolicy
 
     buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     obs_shape = env.observation_space.shape

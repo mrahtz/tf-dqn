@@ -1,6 +1,6 @@
+import tensorflow as tf
 from tensorflow.python.keras import Input, Model
 from tensorflow.python.keras.layers import Dense, Conv2D, Lambda, Flatten
-import tensorflow as tf
 
 
 def MLPPolicy(obs_shape, n_actions, hidden=(64, 64)):
@@ -9,8 +9,32 @@ def MLPPolicy(obs_shape, n_actions, hidden=(64, 64)):
     for n in hidden:
         h = Dense(n, activation='relu')(h)
     qs = Dense(n_actions, activation=None)(h)
-    model = Model(inputs=obs, outputs=qs)
-    return model
+    return Model(inputs=obs, outputs=qs)
+
+
+def DuelingMLPPolicy(obs_shape, n_actions, hidden=(64, 64)):
+    obs = Input(shape=obs_shape)
+    h = obs
+    for n in hidden:
+        h = Dense(n, activation='relu')(h)
+    v = Dense(1, activation=None)(h)
+    advs = Dense(n_actions, activation=None)(h)
+
+    def combine(v_advs):
+        v, advs = v_advs
+        mean_adv = tf.reduce_mean(advs, axis=1, keepdims=True)
+        centered_advs = advs - mean_adv
+        qs = v + centered_advs
+        assert v.shape.as_list() == [None, 1]
+        assert advs.shape.as_list() == [None, n_actions]
+        assert mean_adv.shape.as_list() == [None, 1]
+        assert centered_advs.shape.as_list() == [None, n_actions]
+        assert qs.shape.as_list() == [None, n_actions]
+        return qs
+
+    # Make sure we maintain metadata from past layers for Model
+    qs = Lambda(combine)([v, advs])
+    return Model(inputs=obs, outputs=qs)
 
 
 def check_normalised(obs):

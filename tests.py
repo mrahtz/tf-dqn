@@ -92,7 +92,7 @@ def check_main_target_same(model):
 
 
 def get_model():
-    model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, policy_fn=MLPPolicy)
+    model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, policy_fn=MLPPolicy, double_dqn=False)
     return model
 
 

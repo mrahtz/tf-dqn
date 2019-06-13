@@ -2,19 +2,17 @@ import multiprocessing
 import os
 
 import easy_tf_log
-import gym
-import numpy as np
 from gym.envs.atari import AtariEnv
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from sacred.stflow import LogFileWriter
 
 import config
+from env import make_env
 from model import Model
-from policies import MLPPolicy, CNNPolicy, DuelingMLPPolicy
-from preprocessing import atari_preprocess
+from policies import MLPPolicy, CNNPolicy
 from replay_buffer import ReplayBuffer
-from utils import tf_disable_warnings, tf_disable_deprecation_warnings
+from utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
 tf_disable_warnings()
 tf_disable_deprecation_warnings()
@@ -37,46 +35,43 @@ def train_dqn(buffer: ReplayBuffer,
               checkpoint_every_n_steps,
               random_action_prob,
               train_n_steps):
-    logger = easy_tf_log.Logger(os.path.join(observer.dir, 'train-env'))
-    step_n = 0
-    episode_reward = 0
-    episode_rewards = []
+    n_steps = 0
     obs1, done = train_env.reset(), False
+    logger = easy_tf_log.Logger(os.path.join(observer.dir, 'dqn'))
+    step_rate_measure = RateMeasure(n_steps)
 
-    while step_n < train_n_steps:
+    while n_steps < train_n_steps:
         act = model.step(obs1, random_action_prob=random_action_prob)
         obs2, reward, done, info = train_env.step(act)
         buffer.store(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done))
-        episode_reward += reward
         obs1 = obs2
         if done:
-            logger.logkv('train_reward', episode_reward)
-            episode_rewards.append(episode_reward)
-            episode_reward = 0
             obs1, done = train_env.reset(), False
 
         if len(buffer) < n_start_steps:
             continue
 
         batch = buffer.sample(batch_size=batch_size)
-        model.train(batch)
+        loss = model.train(batch)
+        n_steps += 1
 
-        if step_n % update_target_every_n_steps == 0:
+        if n_steps % update_target_every_n_steps == 0:
             model.update_target()
 
-        if step_n % log_every_n_steps == 0:
-            print(f"Step: {step_n}")
-            print("Last 10 train episode mean reward sum:", np.mean(episode_rewards[-10:]))
-            print("Buffer size:", len(buffer))
-
-        if step_n % checkpoint_every_n_steps == 0:
+        if n_steps % checkpoint_every_n_steps == 0:
             model.save()
 
-        step_n += 1
+        if n_steps % log_every_n_steps == 0:
+            print(f"Trained {n_steps} steps")
+            n_steps_per_second = step_rate_measure.measure(n_steps)
+            logger.logkv('dqn/buffer_size', len(buffer))
+            logger.logkv('dqn/n_steps', n_steps)
+            logger.logkv('dqn/n_steps_per_second', n_steps_per_second)
+            logger.logkv('dqn/loss', loss)
 
 
-def run_test_env(model, model_load_dir, render, log_dir, env):
-    logger = easy_tf_log.Logger(log_dir)
+def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
+    env = make_env(env_id, seed, log_dir, 'test')
     while True:
         model.load(model_load_dir)
         obs, done, rewards = env.reset(), False, []
@@ -85,19 +80,11 @@ def run_test_env(model, model_load_dir, render, log_dir, env):
             if render:
                 env.render()
             obs, reward, done, info = env.step(action)
-            rewards.append(reward)
-        episode_reward = sum(rewards)
-        logger.logkv('test_reward', episode_reward)
-        print("Test episode reward:", episode_reward)
 
 
 @ex.automain
 def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, policy_fn=None):
-    env = gym.make(env_id)
-    env.seed(seed)
-    if isinstance(env.unwrapped, AtariEnv):
-        env = atari_preprocess(env)
-
+    env = make_env(env_id, seed, observer.dir, 'train')
     if policy_fn is None:
         if isinstance(env.unwrapped, AtariEnv):
             policy_fn = CNNPolicy
@@ -109,12 +96,11 @@ def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, policy_fn=Non
     n_actions = env.action_space.n
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
-                  discount=gamma, lr=lr, seed=seed,double_dqn=double_dqn)
+                  discount=gamma, lr=lr, seed=seed, double_dqn=double_dqn)
     model.save()
 
     ctx = multiprocessing.get_context('spawn')
-    test_log_dir = os.path.join(observer.dir, 'test_env')
-    ctx.Process(target=run_test_env, args=(model, ckpt_dir, render, test_log_dir, env)).start()
+    ctx.Process(target=run_test_env, args=(model, ckpt_dir, render, env_id, seed, observer.dir)).start()
 
     train_dqn(buffer, model, env)
 

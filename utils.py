@@ -1,4 +1,5 @@
 import os
+import time
 
 import tensorflow as tf
 from tensorflow.python.util import deprecation
@@ -21,3 +22,24 @@ def tensor_index(params, indices):
     result = result[:, 0]
 
     return result
+
+
+class RateMeasure:
+    def __init__(self, val):
+        self.prev_t = self.prev_value = None
+        self.reset(val)
+
+    def reset(self, val):
+        self.prev_value = val
+        self.prev_t = time.time()
+
+    def measure(self, val):
+        val_change = val - self.prev_value
+        cur_t = time.time()
+        interval = cur_t - self.prev_t
+        rate = val_change / interval
+
+        self.prev_t = cur_t
+        self.prev_value = val
+
+        return rate

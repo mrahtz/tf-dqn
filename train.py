@@ -102,8 +102,10 @@ def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feat
     model.save()
 
     ctx = multiprocessing.get_context('spawn')
-    ctx.Process(target=run_test_env, args=(model, ckpt_dir, render, env_id, seed, observer.dir)).start()
+    test_env_proc = ctx.Process(target=run_test_env, daemon=False, args=(model, ckpt_dir, render, env_id, seed, observer.dir))
+    test_env_proc.start()
 
     train_dqn(buffer, model, env)
 
+    test_env_proc.terminate()
     return model

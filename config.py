@@ -12,5 +12,6 @@ params = dict(
     env_id='CartPole-v0',
     train_n_steps=100000,
     seed=0,
-    double_dqn=False,
+    double_dqn=True,
+    dueling=True
 )

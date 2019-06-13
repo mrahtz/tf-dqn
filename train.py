@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+from functools import partial
 
 import easy_tf_log
 from gym.envs.atari import AtariEnv
@@ -10,7 +11,7 @@ from sacred.stflow import LogFileWriter
 import config
 from env import make_env
 from model import Model
-from policies import MLPPolicy, CNNPolicy
+from policies import cnn_features, mlp_features, make_policy
 from replay_buffer import ReplayBuffer
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
@@ -83,13 +84,14 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, policy_fn=None):
+def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feature_extractor=None):
     env = make_env(env_id, seed, observer.dir, 'train')
-    if policy_fn is None:
+    if feature_extractor is None:
         if isinstance(env.unwrapped, AtariEnv):
-            policy_fn = CNNPolicy
+            feature_extractor = cnn_features
         else:
-            policy_fn = MLPPolicy
+            feature_extractor = mlp_features
+    policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
 
     buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     obs_shape = env.observation_space.shape

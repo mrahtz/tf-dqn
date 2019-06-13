@@ -61,7 +61,9 @@ class Model:
             grads_and_vars_clipped = [(tf.clip_by_norm(grad, 10), var) for grad, var in grads_and_vars]
             train_op = optimizer.apply_gradients(grads_and_vars_clipped)
 
-            sess = tf.Session()
+            config = tf.ConfigProto()
+            config.gpu_options.allow_growth = True
+            sess = tf.Session(config=config)
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
 

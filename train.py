@@ -3,10 +3,10 @@ import os
 from functools import partial
 
 import easy_tf_log
+import numpy as np
 from gym.envs.atari import AtariEnv
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from sacred.stflow import LogFileWriter
 
 import config
 from env import make_env
@@ -21,11 +21,11 @@ tf_disable_deprecation_warnings()
 ex = Experiment('dqn')
 observer = FileStorageObserver.create('runs')
 ex.observers.append(observer)
-ex.add_config(config.params)
+ex.add_config(config.default_config)
+ex.add_named_config('atari_config', config.atari_config)
 
 
 @ex.capture
-@LogFileWriter(ex)
 def train_dqn(buffer: ReplayBuffer,
               model: Model,
               train_env,
@@ -35,11 +35,13 @@ def train_dqn(buffer: ReplayBuffer,
               log_every_n_steps,
               checkpoint_every_n_steps,
               random_action_prob,
-              train_n_steps):
+              train_n_steps,
+              n_env_steps_per_rl_update):
     n_steps = 0
     obs1, done = train_env.reset(), False
     logger = easy_tf_log.Logger(os.path.join(observer.dir, 'dqn'))
     step_rate_measure = RateMeasure(n_steps)
+    losses = []
 
     while n_steps < train_n_steps:
         act = model.step(obs1, random_action_prob=random_action_prob)
@@ -52,9 +54,10 @@ def train_dqn(buffer: ReplayBuffer,
         if len(buffer) < n_start_steps:
             continue
 
-        batch = buffer.sample(batch_size=batch_size)
-        loss = model.train(batch)
-        n_steps += 1
+        if n_steps % n_env_steps_per_rl_update == 0:
+            batch = buffer.sample(batch_size=batch_size)
+            loss = model.train(batch)
+            losses.append(loss)
 
         if n_steps % update_target_every_n_steps == 0:
             model.update_target()
@@ -68,7 +71,10 @@ def train_dqn(buffer: ReplayBuffer,
             logger.logkv('dqn/buffer_size', len(buffer))
             logger.logkv('dqn/n_steps', n_steps)
             logger.logkv('dqn/n_steps_per_second', n_steps_per_second)
-            logger.logkv('dqn/loss', loss)
+            logger.logkv('dqn/loss', np.mean(losses))
+            losses = []
+
+        n_steps += 1
 
 
 def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
@@ -86,6 +92,7 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 @ex.automain
 def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feature_extractor=None):
     env = make_env(env_id, seed, observer.dir, 'train')
+
     if feature_extractor is None:
         if isinstance(env.unwrapped, AtariEnv):
             feature_extractor = cnn_features
@@ -102,7 +109,8 @@ def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feat
     model.save()
 
     ctx = multiprocessing.get_context('spawn')
-    test_env_proc = ctx.Process(target=run_test_env, daemon=False, args=(model, ckpt_dir, render, env_id, seed, observer.dir))
+    test_env_proc = ctx.Process(target=run_test_env, daemon=False,
+                                args=(model, ckpt_dir, render, env_id, seed, observer.dir))
     test_env_proc.start()
 
     train_dqn(buffer, model, env)

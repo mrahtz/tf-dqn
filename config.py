@@ -1,4 +1,4 @@
-params = dict(
+default_config = dict(
     batch_size=32,
     gamma=1.0,
     random_action_prob=0.1,
@@ -6,6 +6,7 @@ params = dict(
     update_target_every_n_steps=500,
     log_every_n_steps=100,
     checkpoint_every_n_steps=1000,
+    n_env_steps_per_rl_update=1,
     buffer_size=50000,
     lr=5e-4,
     render=False,
@@ -13,5 +14,14 @@ params = dict(
     train_n_steps=100000,
     seed=0,
     double_dqn=True,
-    dueling=True
+    dueling=True,
+)
+
+atari_config = dict(
+    gamma=0.99,
+    n_start_steps=10000,
+    update_target_every_n_steps=1000,
+    n_env_steps_per_rl_update=4,
+    buffer_size=10000,
+    lr=1e-4,
 )

@@ -1,3 +1,7 @@
+from functools import partial
+
+from policies import mlp_features, cnn_features
+
 default_config = dict(
     batch_size=32,
     gamma=1.0,
@@ -15,6 +19,7 @@ default_config = dict(
     seed=0,
     double_dqn=True,
     dueling=True,
+    feature_extractor=partial(mlp_features, n_hidden=(64, 64))
 )
 
 atari_config = dict(
@@ -24,4 +29,5 @@ atari_config = dict(
     n_env_steps_per_rl_update=4,
     buffer_size=10000,
     lr=1e-4,
+    feature_extractor=cnn_features,
 )

@@ -16,7 +16,7 @@ def make_policy(obs_shape, n_actions, feature_extractor, dueling):
     return model
 
 
-def mlp_features(obs, n_hidden=(64, 64)):
+def mlp_features(obs, n_hidden):
     h = obs
     for n in n_hidden:
         h = Dense(n, activation='relu')(h)

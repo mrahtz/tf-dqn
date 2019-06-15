@@ -4,14 +4,13 @@ from functools import partial
 
 import easy_tf_log
 import numpy as np
-from gym.envs.atari import AtariEnv
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
 import config
 from env import make_env
 from model import Model
-from policies import cnn_features, mlp_features, make_policy
+from policies import make_policy
 from replay_buffer import ReplayBuffer
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
@@ -90,14 +89,9 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feature_extractor=None):
+def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feature_extractor):
     env = make_env(env_id, seed, observer.dir, 'train')
 
-    if feature_extractor is None:
-        if isinstance(env.unwrapped, AtariEnv):
-            feature_extractor = cnn_features
-        else:
-            feature_extractor = mlp_features
     policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
 
     buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)

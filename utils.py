@@ -43,3 +43,11 @@ class RateMeasure:
         self.prev_value = val
 
         return rate
+
+
+def huber_loss(x, delta=1.0):
+    return tf.where(
+        tf.abs(x) < delta,
+        0.5 * x ** 2,
+        delta * (tf.abs(x) - 0.5 * delta)
+    )

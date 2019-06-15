@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 from replay_buffer import ReplayBatch
-from utils import tensor_index
+from utils import tensor_index, huber_loss
 
 
 class Model:
@@ -51,11 +51,32 @@ class Model:
                 q_target = tensor_index(q2s_target, a)
             else:
                 q_target = tf.reduce_max(q2s_target, axis=1)
+
             backup = rews_ph + discount * (1 - done_ph) * q_target
-            backup = tf.stop_gradient(backup)
             assert backup.shape.as_list() == [None]
-            loss = tf.reduce_mean((q1_main - backup) ** 2)
+
+            td_error = q1_main - tf.stop_gradient(backup)
+            assert td_error.shape.as_list() == [None]
+
+            # From the paper:
+            #
+            #   We also found it helpful to clip the error term from the update
+            #     r + gamma * max_a' Q(s', a') - Q(s, a)
+            #   to be between -1 and 1. Because the absolute value loss function |x| has a derivative of -1 for all
+            #   negative values of x and a derivative of 1 for all positive values of x, clipping the squared error to
+            #   be between -1 and 1 corresponds to using an absolute value loss function for errors outside of the
+            #   (-1, 1). interval. This form of error clipping further improved the stability of the algorithm.
+            #
+            # As https://openai.com/blog/openai-baselines-dqn/ notes, this is somewhat ambiguous. The key piece of
+            # information is that the loss should be equivalent to an absolute loss outside (-1, 1). That implies
+            # clipping the gradient rather than clipping the value (which would be a bad idea anyway, because it would
+            # produce a flat derivative outside (-1, 1)).
+            td_error_clipped = huber_loss(td_error, delta=1)
+            assert td_error_clipped.shape.as_list() == [None]
+
+            loss = tf.reduce_mean(td_error_clipped)
             assert loss.shape.as_list() == []
+
             optimizer = tf.train.AdamOptimizer(learning_rate=lr)
             grads_and_vars = optimizer.compute_gradients(loss, var_list=tf.trainable_variables('main'))
             grads_and_vars_clipped = [(tf.clip_by_norm(grad, 10), var) for grad, var in grads_and_vars]

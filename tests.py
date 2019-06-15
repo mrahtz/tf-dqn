@@ -4,13 +4,14 @@ from functools import partial
 import gym
 import numpy as np
 import tensorflow as tf
+from matplotlib.pyplot import plot, show, grid, xlabel, ylabel
 from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
 
 import train
 from model import Model
 from policies import mlp_features, make_policy
 from replay_buffer import ReplayBuffer, ReplayBatch
-from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index
+from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index, huber_loss
 
 tf_disable_warnings()
 tf_disable_deprecation_warnings()
@@ -57,6 +58,20 @@ class UnitTests(unittest.TestCase):
         indices = tf.constant([0, 1])
         result = sess.run(tensor_index(params, indices))
         np.testing.assert_array_equal(result, [1, 5])
+
+    def _test_huber_loss(self):
+        sess = tf.Session()
+        x_ph = tf.placeholder(tf.float32)
+        loss = huber_loss(x_ph, delta=1)
+
+        xs = np.linspace([-5, -4], [5, 4], axis=1)
+        losses = sess.run(loss, feed_dict={x_ph: xs})
+        plot(xs[0], losses[0])
+        plot(xs[1], losses[1])
+        grid()
+        xlabel("x")
+        ylabel("Huber loss")
+        show()
 
 
 def store_in_buf(buf, value):

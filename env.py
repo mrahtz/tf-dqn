@@ -1,4 +1,5 @@
 import os
+import sys
 from collections import deque
 
 import cv2
@@ -239,6 +240,9 @@ class LogRewards(Wrapper):
         obs, reward, done, info = self.env.step(action)
         self.episode_reward += reward
         if done:
+            if self.test_or_train == 'test':
+                print(f"{self.test_or_train.capitalize()} episode done; reward {self.episode_reward}")
+                sys.stdout.flush()
             self.logger.logkv(f'env_{self.test_or_train}/episode_reward', self.episode_reward)
         return obs, reward, done, info
 

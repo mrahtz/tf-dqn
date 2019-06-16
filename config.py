@@ -15,7 +15,7 @@ default_config = dict(
     lr=5e-4,
     render=False,
     env_id='CartPole-v0',
-    train_n_steps=100000,
+    train_n_steps=1e5,
     seed=0,
     double_dqn=True,
     dueling=True,
@@ -30,4 +30,5 @@ atari_config = dict(
     buffer_size=10000,
     lr=1e-4,
     feature_extractor=cnn_features,
+    train_n_steps=1e7
 )

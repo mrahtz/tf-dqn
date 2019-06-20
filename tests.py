@@ -1,4 +1,5 @@
 import unittest
+from collections import Counter
 from functools import partial
 
 import gym
@@ -10,7 +11,7 @@ from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
 import train
 from model import Model
 from policies import mlp_features, make_policy
-from replay_buffer import ReplayBuffer, ReplayBatch
+from replay_buffer import ReplayBuffer, ReplayBatch, PrioritizedReplayBuffer
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index, huber_loss
 
 tf_disable_warnings()
@@ -32,6 +33,30 @@ class UnitTests(unittest.TestCase):
 
         store_in_buf(buf, 3)
         check_buf_equals(buf, [2, 3])
+
+    def test_prioritized_replay_buffer(self):
+        self._test_proportional_priority_at_start()
+        self._test_uniform_priority_at_end()
+        self._test_sampling_entropy_decreases_monotonically()
+
+    def _test_proportional_priority_at_start(self):
+        tds, sample_probs = get_sample_probs(beta0=0)
+        for td, prob in zip(tds, sample_probs):
+            np.testing.assert_approx_equal(prob, td / sum(tds), significant=2)
+
+    def _test_uniform_priority_at_end(self):
+        tds, sample_probs = get_sample_probs(beta0=1)
+        for td, prob in zip(tds, sample_probs):
+            np.testing.assert_approx_equal(prob, 1 / len(tds), significant=2)
+
+    def _test_sampling_entropy_decreases_monotonically(self):
+        last_entropy = float('inf')
+        for beta0 in np.linspace(0, 1, 11):
+            tds, probs = get_sample_probs(beta0)
+            entropy = get_entropy(probs)
+            # As we progress, we should move towards a uniform sampling distribution
+            self.assertLess(entropy, last_entropy)
+            last_entropy = entropy
 
     def test_model_train(self):
         model = get_model()
@@ -88,9 +113,38 @@ def store_in_buf(buf, value):
     buf.store(obs1=value, acts=None, rews=None, obs2=None, done=None)
 
 
+def store_in_buf_with_td(buf, value, td):
+    buf.store_with_td(obs1=value, acts=None, rews=None, obs2=None, done=None, td=td)
+
+
 def check_buf_equals(buf, values):
     samples = {buf.sample(batch_size=1).obs1[0] for _ in range(100)}
     assert samples == set(values)
+
+
+def get_entropy(probs):
+    return np.sum(probs * np.log(probs))
+
+
+def get_sample_probs(beta0):
+    buf = PrioritizedReplayBuffer(obs_shape=(), max_size=3, beta0=beta0)
+    tds = [1, 2, 3]
+    for td in tds:
+        store_in_buf_with_td(buf, td, td)
+
+    samples = []
+    n_samples = 10000
+    for _ in range(n_samples):
+        batch = buf.sample(batch_size=1)
+        samples.append(batch.obs1[0])
+
+    counts = Counter(samples)
+    tds, probs = [], []
+    for td, count in counts.items():
+        tds.append(td)
+        probs.append(count / n_samples)
+
+    return tds, probs
 
 
 def get_model():

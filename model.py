@@ -24,6 +24,7 @@ class Model:
             acts_ph = tf.placeholder(tf.int32, (None,), name='a1')
             rews_ph = tf.placeholder(tf.float32, (None,), name='r')
             done_ph = tf.placeholder(tf.float32, (None,), name='done')
+            impw_ph = tf.placeholder(tf.float32, (None,), name='impw')
 
             with tf.variable_scope('main'):
                 policy = policy_fn(obs_shape, n_actions)
@@ -58,6 +59,10 @@ class Model:
             td_error = q1_main - tf.stop_gradient(backup)
             assert td_error.shape.as_list() == [None]
 
+            assert impw_ph.shape.as_list() == [None]
+            weighted_td_error = impw_ph * td_error
+            assert weighted_td_error.shape.as_list() == [None]
+
             # From the paper:
             #
             #   We also found it helpful to clip the error term from the update
@@ -71,14 +76,15 @@ class Model:
             # information is that the loss should be equivalent to an absolute loss outside (-1, 1). That implies
             # clipping the gradient rather than clipping the value (which would be a bad idea anyway, because it would
             # produce a flat derivative outside (-1, 1)).
-            td_error_clipped = huber_loss(td_error, delta=1)
-            assert td_error_clipped.shape.as_list() == [None]
+            weighted_td_error_clipped = huber_loss(weighted_td_error, delta=1)
+            assert weighted_td_error_clipped.shape.as_list() == [None]
 
-            loss = tf.reduce_mean(td_error_clipped)
+            loss = tf.reduce_mean(weighted_td_error_clipped)
             assert loss.shape.as_list() == []
 
             optimizer = tf.train.AdamOptimizer(learning_rate=lr)
             grads_and_vars = optimizer.compute_gradients(loss, var_list=tf.trainable_variables('main'))
+            # TODO move amount of gradient clipping into config.py
             grads_and_vars_clipped = [(tf.clip_by_norm(grad, 10), var) for grad, var in grads_and_vars]
             train_op = optimizer.apply_gradients(grads_and_vars_clipped)
 
@@ -93,6 +99,7 @@ class Model:
         self.rews_ph = rews_ph
         self.obs2_ph = obs2_ph
         self.done_ph = done_ph
+        self.impw_ph = impw_ph
         self.q1s_main = q1s_main
         self.q2s_target = q2s_target
         self.q1 = q1_main
@@ -102,7 +109,8 @@ class Model:
         self.sess = sess
         self.saver = saver
         self.target_update_ops = target_update_ops
-       
+        self.td_error = td_error
+
         self.update_target()
 
     def save_args(self, locals):
@@ -145,13 +153,21 @@ class Model:
         self.sess.run(self.target_update_ops)
 
     def train(self, batch: ReplayBatch):
-        _, loss = self.sess.run([self.train_op, self.loss],
-                                feed_dict={self.obs1_ph: batch.obs1,
-                                           self.acts_ph: batch.acts,
-                                           self.rews_ph: batch.rews,
-                                           self.obs2_ph: batch.obs2,
-                                           self.done_ph: batch.done})
-        return loss
+        _, loss, td_errors = self.sess.run([self.train_op, self.loss, self.td_error],
+                                           feed_dict={self.obs1_ph: batch.obs1,
+                                                      self.acts_ph: batch.acts,
+                                                      self.rews_ph: batch.rews,
+                                                      self.obs2_ph: batch.obs2,
+                                                      self.done_ph: batch.done,
+                                                      self.impw_ph: batch.impw})
+        return loss, td_errors
+
+    def calculate_td(self, obs1, act, reward, obs2, done):
+        return self.sess.run(self.td_error, feed_dict={self.obs1_ph: [obs1],
+                                                       self.acts_ph: [act],
+                                                       self.rews_ph: [reward],
+                                                       self.obs2_ph: [obs2],
+                                                       self.done_ph: [done]})[0]
 
     def save(self):
         save_id = int(time.time())

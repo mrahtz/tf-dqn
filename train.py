@@ -11,7 +11,7 @@ import config
 from env import make_env
 from model import Model
 from policies import make_policy
-from replay_buffer import ReplayBuffer
+from replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
 tf_disable_warnings()
@@ -45,7 +45,12 @@ def train_dqn(buffer: ReplayBuffer,
     while n_steps < train_n_steps:
         act = model.step(obs1, random_action_prob=random_action_prob)
         obs2, reward, done, info = train_env.step(act)
-        buffer.store(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done))
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            td = model.calculate_td(obs1=obs1, act=act, reward=reward, obs2=obs2, done=done)
+            buffer.store_with_td(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done), td=td)
+            buffer.update_beta(n_steps / train_n_steps)
+        else:
+            buffer.store(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done))
         obs1 = obs2
         if done:
             obs1, done = train_env.reset(), False
@@ -55,8 +60,10 @@ def train_dqn(buffer: ReplayBuffer,
 
         if n_steps % n_env_steps_per_rl_update == 0:
             batch = buffer.sample(batch_size=batch_size)
-            loss = model.train(batch)
+            loss, td_errors = model.train(batch)
             losses.append(loss)
+            if isinstance(buffer, PrioritizedReplayBuffer):
+                buffer.update_tds(batch.idxs, td_errors)
 
         if n_steps % update_target_every_n_steps == 0:
             model.update_target()
@@ -71,6 +78,8 @@ def train_dqn(buffer: ReplayBuffer,
             logger.logkv('dqn/n_steps', n_steps)
             logger.logkv('dqn/n_steps_per_second', n_steps_per_second)
             logger.logkv('dqn/loss', np.mean(losses))
+            if isinstance(buffer, PrioritizedReplayBuffer):
+                logger.logkv('replay_buffer/beta', buffer.beta)
             losses = []
 
         n_steps += 1
@@ -89,12 +98,15 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, feature_extractor):
+def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, prioritized, feature_extractor):
     env = make_env(env_id, seed, observer.dir, 'train')
 
     policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
 
-    buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
+    if prioritized:
+        buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
+    else:
+        buffer = PrioritizedReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     obs_shape = env.observation_space.shape
     n_actions = env.action_space.n
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')

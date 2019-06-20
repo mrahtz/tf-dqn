@@ -19,6 +19,7 @@ default_config = dict(
     seed=0,
     double_dqn=True,
     dueling=True,
+    prioritized=True,
     feature_extractor=partial(mlp_features, n_hidden=(64, 64))
 )
 

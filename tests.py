@@ -59,7 +59,7 @@ class UnitTests(unittest.TestCase):
         result = sess.run(tensor_index(params, indices))
         np.testing.assert_array_equal(result, [1, 5])
 
-    def _test_huber_loss(self):
+    def _plot_huber_loss(self):
         sess = tf.Session()
         x_ph = tf.placeholder(tf.float32)
         loss = huber_loss(x_ph, delta=1)
@@ -72,6 +72,16 @@ class UnitTests(unittest.TestCase):
         xlabel("x")
         ylabel("Huber loss")
         show()
+
+    def test_huber_loss(self):
+        xs = tf.Variable([0.0, 0.1, 0.5, 1.0, 1.5, 2.0])
+        y = huber_loss(xs)
+        grads = tf.gradients([y], xs)
+        sess = tf.Session()
+        sess.run(tf.global_variables_initializer())
+        expected_grads = [0.0, 0.1, 0.5, 1.0, 1.0, 1.0]
+        actual_grads = sess.run(grads)[0]
+        np.testing.assert_array_almost_equal(actual_grads, expected_grads)
 
 
 def store_in_buf(buf, value):

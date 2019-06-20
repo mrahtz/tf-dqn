@@ -55,13 +55,7 @@ class ReplayBuffer:
         )
 
 
-class DumbPrioritizedReplayBuffer(ReplayBuffer):
-    """
-    "Dumb" prioritized replay: when annealing the weights, do it by changing the sampling probabilities
-    rather than by re-weighting the samples. (I have no idea why it's not done this way in practice. Importance
-    sampling seems so much more complicated.)
-    """
-
+class PrioritizedReplayBuffer(ReplayBuffer):
     # Hyperparameters from
     # https://github.com/hill-a/stable-baselines/blob/72dab6a37bb33ad959cc598f187299edc49c425f/stable_baselines/deepq/dqn.py
     def __init__(self, obs_shape, max_size, alpha=0.6, beta0=0.4, eps=1e-6):
@@ -83,33 +77,6 @@ class DumbPrioritizedReplayBuffer(ReplayBuffer):
     def update_beta(self, cur_frac_of_total_training):
         self.beta = self.beta0 + (1 - self.beta0) * cur_frac_of_total_training
 
-    def sample(self, batch_size=32) -> ReplayBatch:
-        tds = self.tds_buf[:self.len]
-        priorities = np.abs(tds) + self.eps
-
-        priority_sum = np.sum(priorities)
-        assert isinstance(priority_sum, np.float64)
-        sample_probs = priorities / priority_sum
-        assert sample_probs.shape == (self.len,)
-
-        annealing_weights = (1 / sample_probs) ** self.beta
-        assert annealing_weights.shape == (self.len,)
-        sample_probs *= annealing_weights
-        assert sample_probs.shape == (self.len,)
-        sample_probs = sample_probs / sum(sample_probs)
-        assert sample_probs.shape == (self.len,)
-
-        idxs = np.random.choice(self.len, size=batch_size, p=sample_probs, replace=False)
-        return ReplayBatch(
-            obs1=[self.obs1_buf[i] for i in idxs],
-            acts=[self.acts_buf[i] for i in idxs],
-            rews=[self.rews_buf[i] for i in idxs],
-            obs2=[self.obs2_buf[i] for i in idxs],
-            done=[self.done_buf[i] for i in idxs],
-        )
-
-
-class PrioritizedReplayBuffer(DumbPrioritizedReplayBuffer):
     def sample(self, batch_size=32) -> ReplayBatch:
         tds = self.tds_buf[:self.len]
         priorities = np.abs(tds) + self.eps

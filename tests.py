@@ -35,28 +35,9 @@ class UnitTests(unittest.TestCase):
         check_buf_equals(buf, [2, 3])
 
     def test_prioritized_replay_buffer(self):
-        self._test_proportional_priority_at_start()
-        self._test_uniform_priority_at_end()
-        self._test_sampling_entropy_decreases_monotonically()
-
-    def _test_proportional_priority_at_start(self):
         tds, sample_probs = get_sample_probs(beta0=0)
         for td, prob in zip(tds, sample_probs):
             np.testing.assert_approx_equal(prob, td / sum(tds), significant=2)
-
-    def _test_uniform_priority_at_end(self):
-        tds, sample_probs = get_sample_probs(beta0=1)
-        for td, prob in zip(tds, sample_probs):
-            np.testing.assert_approx_equal(prob, 1 / len(tds), significant=2)
-
-    def _test_sampling_entropy_decreases_monotonically(self):
-        last_entropy = float('inf')
-        for beta0 in np.linspace(0, 1, 11):
-            tds, probs = get_sample_probs(beta0)
-            entropy = get_entropy(probs)
-            # As we progress, we should move towards a uniform sampling distribution
-            self.assertLess(entropy, last_entropy)
-            last_entropy = entropy
 
     def test_model_train(self):
         model = get_model()
@@ -148,7 +129,8 @@ def get_sample_probs(beta0):
 
 
 def get_model():
-    policy_fn = partial(make_policy, feature_extractor=mlp_features, dueling=False)
+    feature_extractor = partial(mlp_features, n_hidden=(64, 64))
+    policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=False)
     model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False, policy_fn=policy_fn)
     return model
 

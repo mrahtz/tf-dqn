@@ -10,7 +10,7 @@ from utils import tensor_index, huber_loss
 
 class Model:
 
-    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, lr, double_dqn, save_dir=None):
+    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, lr, gradient_clip, double_dqn, save_dir=None):
         self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
@@ -84,8 +84,7 @@ class Model:
 
             optimizer = tf.train.AdamOptimizer(learning_rate=lr)
             grads_and_vars = optimizer.compute_gradients(loss, var_list=tf.trainable_variables('main'))
-            # TODO move amount of gradient clipping into config.py
-            grads_and_vars_clipped = [(tf.clip_by_norm(grad, 10), var) for grad, var in grads_and_vars]
+            grads_and_vars_clipped = [(tf.clip_by_norm(grad, gradient_clip), var) for grad, var in grads_and_vars]
             train_op = optimizer.apply_gradients(grads_and_vars_clipped)
 
             config = tf.ConfigProto()

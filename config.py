@@ -20,7 +20,8 @@ default_config = dict(
     double_dqn=True,
     dueling=True,
     prioritized=True,
-    feature_extractor=partial(mlp_features, n_hidden=(64, 64))
+    feature_extractor=partial(mlp_features, n_hidden=(64, 64)),
+    gradient_clip=10
 )
 
 atari_config = dict(

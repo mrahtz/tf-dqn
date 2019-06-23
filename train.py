@@ -98,7 +98,7 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, prioritized, feature_extractor):
+def main(gamma, buffer_size, lr, gradient_clip, render, seed, env_id, double_dqn, dueling, prioritized, feature_extractor):
     env = make_env(env_id, seed, observer.dir, 'train')
 
     policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
@@ -111,7 +111,7 @@ def main(gamma, buffer_size, lr, render, seed, env_id, double_dqn, dueling, prio
     n_actions = env.action_space.n
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
-                  discount=gamma, lr=lr, seed=seed, double_dqn=double_dqn)
+                  discount=gamma, lr=lr, gradient_clip=gradient_clip, seed=seed, double_dqn=double_dqn)
     model.save()
 
     ctx = multiprocessing.get_context('spawn')

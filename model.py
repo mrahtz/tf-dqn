@@ -42,15 +42,19 @@ class Model:
             params_target = tf.trainable_variables('target')
             target_update_ops = [param_target.assign(param) for param_target, param in zip(params_target, params)]
 
-            pi = tf.math.argmax(q1s_main, axis=1)
+            pi = tf.argmax(q1s_main, axis=1)
             assert pi.shape.as_list() == [None]
 
             q1_main = tensor_index(q1s_main, acts_ph)
             assert q1_main.shape.as_list() == [None]
             if double_dqn:
-                a = tf.math.argmax(q2s_main, axis=1)
+                # Double DQN: we choose the action using the main network,
+                # but evaluate it using the target network
+                a = tf.argmax(q2s_main, axis=1)
                 q_target = tensor_index(q2s_target, a)
             else:
+                # Vanilla DQN: we both choose the action and evaluate it
+                # using the target network
                 q_target = tf.reduce_max(q2s_target, axis=1)
 
             backup = rews_ph + discount * (1 - done_ph) * q_target

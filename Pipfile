@@ -7,13 +7,14 @@ verify_ssl = true
 matplotlib = "*"
 
 [packages]
-gym = {extras = ["atari"],version = "*"}
-tensorflow = "*"
-sacred = "*"
-easy-tf-log = "*"
+gym = {extras = ["atari"],version = "==0.13.1"}
+tensorflow = "==1.13.1"
+sacred = "==0.7.5"
+easy-tf-log = "==1.10"
 cloudpickle = "*"
 gitpython = "*"
 opencv-python = "*"
+pymongo = "*"  # Required by sacred
 
 [requires]
 python_version = "3"

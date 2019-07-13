@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/mrahtz/tf-dqn.svg?branch=master)](https://travis-ci.com/mrahtz/tf-dqn)
+
 # TensorFlow DQN
 
 TensorFlow implementation of Deep Q-learning. Implements:

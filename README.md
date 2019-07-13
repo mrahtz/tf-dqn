@@ -28,7 +28,7 @@ To specify training options overriding the defaults in [`config.py`](config.py),
 `config=value` strings. For example:
 
 ```bash
-$ python3 -m dqn.train with env_id=PongNoFrameSkip-v4 dueling=False
+$ python3 -m dqn.train with atari_config env_id=PongNoFrameSkip-v4 dueling=False
 ```
 
 TensorBoard logs will be saved in a subdirectory inside the automatically-created `runs` directory.

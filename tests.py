@@ -131,7 +131,8 @@ def get_sample_probs(beta0):
 def get_model():
     feature_extractor = partial(mlp_features, n_hidden=(64, 64))
     policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=False)
-    model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False, policy_fn=policy_fn)
+    model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False, policy_fn=policy_fn,
+                  gradient_clip=10)
     return model
 
 

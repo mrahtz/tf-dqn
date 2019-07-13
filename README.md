@@ -19,8 +19,6 @@ Install [`pipenv`](https://github.com/pypa/pipenv), then set up a virtual enviro
 $ pipenv sync
 ```
 
-You'll need to install TensorFlow manually - either `tensorflow` or `tensorflow-gpu`.
-
 ## Usage
 
 To a train a policy, use [`train.py`](train.py).
@@ -30,7 +28,7 @@ To specify training options overriding the defaults in [`config.py`](config.py),
 `config=value` strings. For example:
 
 ```bash
-$ python3 train.py with env_id=PongNoFrameSkip-v4 dueling=False
+$ python3 -m dqn.train with env_id=PongNoFrameSkip-v4 dueling=False
 ```
 
 TensorBoard logs will be saved in a subdirectory inside the automatically-created `runs` directory.

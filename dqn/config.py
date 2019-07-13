@@ -1,6 +1,6 @@
 from functools import partial
 
-from policies import mlp_features, cnn_features
+from dqn.policies import mlp_features, cnn_features
 
 default_config = dict(
     batch_size=32,

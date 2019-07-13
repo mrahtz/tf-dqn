@@ -7,12 +7,12 @@ import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
-import config
-from env import make_env
-from model import Model
-from policies import make_policy
-from replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
-from utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
+import dqn.config as config
+from dqn.env import make_env
+from dqn.model import Model
+from dqn.policies import make_policy
+from dqn.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
+from dqn.utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
 tf_disable_warnings()
 tf_disable_deprecation_warnings()

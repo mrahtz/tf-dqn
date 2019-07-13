@@ -8,11 +8,11 @@ import tensorflow as tf
 from matplotlib.pyplot import plot, show, grid, xlabel, ylabel
 from numpy.testing import assert_raises, assert_approx_equal, assert_allclose
 
-import train
-from model import Model
-from policies import mlp_features, make_policy
-from replay_buffer import ReplayBuffer, ReplayBatch, PrioritizedReplayBuffer
-from utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index, huber_loss
+import dqn.train as train
+from dqn.model import Model
+from dqn.policies import mlp_features, make_policy
+from dqn.replay_buffer import ReplayBuffer, ReplayBatch, PrioritizedReplayBuffer
+from dqn.utils import tf_disable_warnings, tf_disable_deprecation_warnings, tensor_index, huber_loss
 
 tf_disable_warnings()
 tf_disable_deprecation_warnings()

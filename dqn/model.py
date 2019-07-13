@@ -4,8 +4,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from replay_buffer import ReplayBatch
-from utils import tensor_index, huber_loss
+from dqn.replay_buffer import ReplayBatch
+from dqn.utils import tensor_index, huber_loss
 
 
 class Model:

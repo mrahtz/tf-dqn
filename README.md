@@ -48,3 +48,13 @@ Also, a general point: be super careful about normalising observations twice. It
 [several months](https://github.com/openai/baselines/issues/431) because of this. We use TensorFlow
 [assertion functions](https://www.tensorflow.org/api_docs/python/tf/debugging/assert_greater_equal) to make sure
 the observations have the right scale right at the point they enter the network.
+
+## Tests
+
+To run smoke tests, unit tests and an end-to-end test, respctively:
+
+```bash
+$ python tests.py SmokeTest
+$ python tests.py UnitTests
+$ python tests.py EndToEnd
+```

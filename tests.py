@@ -27,42 +27,6 @@ class UnitTests(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
 
-    def test_experience_buffer(self):
-        buf = ReplayBuffer(obs_shape=(), max_size=2)
-
-        store_in_buf(buf, 1)
-        check_buf_equals(buf, [1])
-
-        store_in_buf(buf, 2)
-        check_buf_equals(buf, [1, 2])
-
-        store_in_buf(buf, 3)
-        check_buf_equals(buf, [2, 3])
-
-    def test_prioritized_replay_buffer(self):
-        tds, sample_probs = get_sample_probs(beta0=0)
-        for td, prob in zip(tds, sample_probs):
-            np.testing.assert_approx_equal(prob, td / sum(tds), significant=2)
-
-    def test_model_train(self):
-        model = get_model()
-        (obs1, obs2), act, rew = np.random.rand(2, 1), 0, 1
-        batch = ReplayBatch(obs1=[obs1], acts=[act], rews=[rew], obs2=[obs2], done=[True])
-        for _ in range(200):
-            model.train(batch)
-        expected_q = rew
-        actual_q = model.q(obs1, act)
-        assert_approx_equal(actual_q, expected_q, significant=3)
-
-    def test_model_update_target(self):
-        model = get_model()
-        check_main_target_same(model)
-        batch = ReplayBatch(obs1=[[1]], acts=[1], rews=[1], obs2=[[1]], done=[True])
-        model.train(batch)
-        check_main_target_different(model)
-        model.update_target()
-        check_main_target_same(model)
-
     def test_tensor_index(self):
         sess = tf.Session()
         params = tf.constant([[1, 2, 3], [4, 5, 6]])
@@ -70,7 +34,18 @@ class UnitTests(unittest.TestCase):
         result = sess.run(tensor_index(params, indices))
         np.testing.assert_array_equal(result, [1, 5])
 
-    def _plot_huber_loss(self):
+    def test_huber_loss(self):
+        xs = tf.Variable([0.0, 0.1, 0.5, 1.0, 1.5, 2.0])
+        y = huber_loss(xs)
+        grads = tf.gradients([y], xs)
+        sess = tf.Session()
+        sess.run(tf.global_variables_initializer())
+        expected_grads = [0.0, 0.1, 0.5, 1.0, 1.0, 1.0]
+        actual_grads = sess.run(grads)[0]
+        np.testing.assert_array_almost_equal(actual_grads, expected_grads)
+
+    @staticmethod
+    def plot_huber_loss():
         sess = tf.Session()
         x_ph = tf.placeholder(tf.float32)
         loss = huber_loss(x_ph, delta=1)
@@ -84,103 +59,125 @@ class UnitTests(unittest.TestCase):
         ylabel("Huber loss")
         show()
 
-    def test_huber_loss(self):
-        xs = tf.Variable([0.0, 0.1, 0.5, 1.0, 1.5, 2.0])
-        y = huber_loss(xs)
-        grads = tf.gradients([y], xs)
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
-        expected_grads = [0.0, 0.1, 0.5, 1.0, 1.0, 1.0]
-        actual_grads = sess.run(grads)[0]
-        np.testing.assert_array_almost_equal(actual_grads, expected_grads)
+    def test_experience_buffer(self):
+        buf = ReplayBuffer(obs_shape=(), max_size=2)
 
+        self._store_in_buf(buf, 1)
+        self._check_buf_equals(buf, [1])
 
-def store_in_buf(buf, value):
-    buf.store(obs1=value, acts=None, rews=None, obs2=None, done=None)
+        self._store_in_buf(buf, 2)
+        self._check_buf_equals(buf, [1, 2])
 
+        self._store_in_buf(buf, 3)
+        self._check_buf_equals(buf, [2, 3])
 
-def store_in_buf_with_td(buf, value, td):
-    buf.store_with_td(obs1=value, acts=None, rews=None, obs2=None, done=None, td=td)
+    def test_prioritized_replay_buffer(self):
+        tds, sample_probs = self._get_sample_probs(beta0=0)
+        for td, prob in zip(tds, sample_probs):
+            np.testing.assert_approx_equal(prob, td / sum(tds), significant=2)
 
+    @staticmethod
+    def _store_in_buf(buf, value):
+        buf.store(obs1=value, acts=None, rews=None, obs2=None, done=None)
 
-def check_buf_equals(buf, values):
-    samples = {buf.sample(batch_size=1).obs1[0] for _ in range(100)}
-    assert samples == set(values)
+    @staticmethod
+    def _store_in_buf_with_td(buf, value, td):
+        buf.store_with_td(obs1=value, acts=None, rews=None, obs2=None, done=None, td=td)
 
+    @staticmethod
+    def _check_buf_equals(buf, values):
+        samples = {buf.sample(batch_size=1).obs1[0] for _ in range(100)}
+        assert samples == set(values)
 
-def get_entropy(probs):
-    return np.sum(probs * np.log(probs))
+    @staticmethod
+    def _get_sample_probs(beta0):
+        buf = PrioritizedReplayBuffer(obs_shape=(), max_size=3, beta0=beta0)
+        tds = [1, 2, 3]
+        for td in tds:
+            UnitTests._store_in_buf_with_td(buf, td, td)
 
+        samples = []
+        n_samples = 10000
+        for _ in range(n_samples):
+            batch = buf.sample(batch_size=1)
+            samples.append(batch.obs1[0])
 
-def get_sample_probs(beta0):
-    buf = PrioritizedReplayBuffer(obs_shape=(), max_size=3, beta0=beta0)
-    tds = [1, 2, 3]
-    for td in tds:
-        store_in_buf_with_td(buf, td, td)
+        counts = Counter(samples)
+        tds, probs = [], []
+        for td, count in counts.items():
+            tds.append(td)
+            probs.append(count / n_samples)
 
-    samples = []
-    n_samples = 10000
-    for _ in range(n_samples):
-        batch = buf.sample(batch_size=1)
-        samples.append(batch.obs1[0])
+        return tds, probs
 
-    counts = Counter(samples)
-    tds, probs = [], []
-    for td, count in counts.items():
-        tds.append(td)
-        probs.append(count / n_samples)
+    def test_model_train(self):
+        model = self._get_model()
+        (obs1, obs2), act, rew = np.random.rand(2, 1), 0, 1
+        batch = ReplayBatch(obs1=[obs1], acts=[act], rews=[rew], obs2=[obs2], done=[True])
+        for _ in range(200):
+            model.train(batch)
+        expected_q = rew
+        actual_q = model.q(obs1, act)
+        assert_approx_equal(actual_q, expected_q, significant=3)
 
-    return tds, probs
+    def test_model_update_target(self):
+        model = self._get_model()
+        self._check_main_target_same(model)
+        batch = ReplayBatch(obs1=[[1]], acts=[1], rews=[1], obs2=[[1]], done=[True])
+        model.train(batch)
+        self._check_main_target_different(model)
+        model.update_target()
+        self._check_main_target_same(model)
 
+    @staticmethod
+    def _get_model():
+        feature_extractor = partial(mlp_features, n_hidden=(64, 64))
+        policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=False)
+        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False,
+                      policy_fn=policy_fn,
+                      gradient_clip=10)
+        return model
 
-def get_model():
-    feature_extractor = partial(mlp_features, n_hidden=(64, 64))
-    policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=False)
-    model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False, policy_fn=policy_fn,
-                  gradient_clip=10)
-    return model
+    @staticmethod
+    def _check_main_target_different(model):
+        obs = [np.random.rand()]
+        q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
+                                                                                 model.obs2_ph: [obs]})
+        assert_raises(AssertionError, assert_allclose, q1s, q2s)
+        return obs
 
-
-def check_main_target_different(model):
-    obs = [np.random.rand()]
-    q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
-                                                                             model.obs2_ph: [obs]})
-    assert_raises(AssertionError, assert_allclose, q1s, q2s)
-    return obs
-
-
-def check_main_target_same(model):
-    obs = [np.random.rand()]
-    q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
-                                                                             model.obs2_ph: [obs]})
-    assert_allclose(q1s, q2s)
+    @staticmethod
+    def _check_main_target_same(model):
+        obs = [np.random.rand()]
+        q1s, q2s = model.sess.run([model.q1s_main, model.q2s_target], feed_dict={model.obs1_ph: [obs],
+                                                                                 model.obs2_ph: [obs]})
+        assert_allclose(q1s, q2s)
 
 
 class EndToEnd(unittest.TestCase):
     def test_cartpole(self):
-        feature_extractor = partial(mlp_features, n_hidden=[64, 64])
         run = train.ex.run(config_updates={'train_n_steps': 50_000,
                                            'seed': 0,
-                                           'feature_extractor': feature_extractor,
+                                           'features': 'mlp',
                                            'dueling': False,
                                            'double_dqn': False})
         model = run.result
 
         env = gym.make('CartPole-v0')
         env.seed(0)
-        episode_rewards = run_n_test_episodes(env, model, 5)
+        episode_rewards = self._run_n_test_episodes(env, model, 5)
         self.assertEqual(min(episode_rewards), 200)
 
-
-def run_n_test_episodes(env, model, n):
-    episode_rewards = []
-    for _ in range(n):
-        obs, done, rewards = env.reset(), False, []
-        while not done:
-            obs, reward, done, info = env.step(model.step(obs, random_action_prob=0))
-            rewards.append(reward)
-        episode_rewards.append(sum(rewards))
-    return episode_rewards
+    @staticmethod
+    def _run_n_test_episodes(env, model, n):
+        episode_rewards = []
+        for _ in range(n):
+            obs, done, rewards = env.reset(), False, []
+            while not done:
+                obs, reward, done, info = env.step(model.step(obs, random_action_prob=0))
+                rewards.append(reward)
+            episode_rewards.append(sum(rewards))
+        return episode_rewards
 
 
 if __name__ == '__main__':

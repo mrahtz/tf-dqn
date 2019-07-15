@@ -20,13 +20,13 @@ default_config = dict(
     gradient_clip=10
 )
 
+# Hyperparams from
+# https://github.com/hill-a/stable-baselines/blob/72dab6a37bb33ad959cc598f187299edc49c425f/stable_baselines/deepq/dqn.py
 atari_config = dict(
     gamma=0.99,
-    n_start_steps=10_000,
-    update_target_every_n_steps=1000,
-    n_env_steps_per_rl_update=4,
-    buffer_size=10_000,
-    lr=1e-4,
+    n_start_steps=1_000,
+    update_target_every_n_steps=500,
+    n_env_steps_per_rl_update=1,
     feature_extractor='cnn',
     train_n_steps=1e7
 )

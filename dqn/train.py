@@ -11,7 +11,7 @@ from sacred.observers import FileStorageObserver
 import dqn.config as config
 from dqn.env import make_env
 from dqn.model import Model
-from dqn.policies import make_policy, cnn_features, mlp_features
+from dqn.policies import MLPFeatures, CNNFeatures, Policy
 from dqn.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from dqn.utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
@@ -101,25 +101,24 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 @ex.automain
 def main(gamma, buffer_size, lr, gradient_clip, render, seed, env_id, double_dqn, dueling, prioritized, features):
     env = make_env(env_id, seed, observer.dir, 'train')
+    n_actions = env.action_space.n
+    obs_shape = env.observation_space.shape
 
     if isinstance(env.unwrapped, AtariEnv) and features != 'cnn':
         raise Exception("Atari environments must use atari_config")
 
     if features == 'mlp':
-        feature_extractor = partial(mlp_features, n_hidden=(64, 64))
+        features_cls = MLPFeatures
     elif features == 'cnn':
-        feature_extractor = cnn_features
+        features_cls = CNNFeatures
     else:
         raise Exception(f"Invalid features network: '{features}'")
-
-    policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
+    policy_fn = partial(Policy, features_cls=features_cls, dueling=dueling)
 
     if prioritized:
         buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     else:
         buffer = PrioritizedReplayBuffer(env.observation_space.shape, max_size=buffer_size)
-    obs_shape = env.observation_space.shape
-    n_actions = env.action_space.n
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
                   discount=gamma, lr=lr, gradient_clip=gradient_clip, seed=seed, double_dqn=double_dqn)

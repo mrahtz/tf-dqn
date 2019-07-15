@@ -27,14 +27,14 @@ class Model:
             impw_ph = tf.placeholder(tf.float32, (None,), name='impw')
 
             with tf.variable_scope('main'):
-                policy = policy_fn(obs_shape, n_actions)
+                policy = policy_fn(n_actions=n_actions)
                 q1s_main = policy(obs1_ph)
                 q2s_main = policy(obs2_ph)
                 assert q1s_main.shape.as_list() == [None, n_actions]
                 assert q2s_main.shape.as_list() == [None, n_actions]
 
             with tf.variable_scope('target'):
-                policy = policy_fn(obs_shape, n_actions)
+                policy = policy_fn(n_actions=n_actions)
                 q2s_target = policy(obs2_ph)
                 assert q2s_target.shape.as_list() == [None, n_actions]
 

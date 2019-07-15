@@ -15,7 +15,7 @@ class CNNFeatures(Sequential):
             The output layer is a fully-connected linear layer with a single output for each valid action.
         """
         layers = [
-            CheckCNNObsNormalized,
+            CheckCNNObsNormalized(),
             Conv2D(filters=32, kernel_size=8, strides=4, activation='relu'),
             Conv2D(filters=64, kernel_size=4, strides=2, activation='relu'),
             Conv2D(filters=64, kernel_size=3, strides=1, activation='relu'),

@@ -54,7 +54,7 @@ the observations have the right scale right at the point they enter the network.
 To run smoke tests, unit tests and an end-to-end test, respctively:
 
 ```bash
-$ python tests.py SmokeTest
-$ python tests.py UnitTests
+$ python tests.py Smoke
+$ python tests.py Unit
 $ python tests.py EndToEnd
 ```

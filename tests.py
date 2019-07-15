@@ -18,12 +18,12 @@ tf_disable_warnings()
 tf_disable_deprecation_warnings()
 
 
-class SmokeTest(unittest.TestCase):
+class Smoke(unittest.TestCase):
     def test(self):
         train.ex.run(config_updates={'train_n_steps': 0})
 
 
-class UnitTests(unittest.TestCase):
+class Unit(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
 

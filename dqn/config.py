@@ -27,6 +27,6 @@ atari_config = dict(
     n_start_steps=1_000,
     update_target_every_n_steps=500,
     n_env_steps_per_rl_update=1,
-    feature_extractor='cnn',
+    features='cnn',
     train_n_steps=1e7
 )

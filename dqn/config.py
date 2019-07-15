@@ -1,7 +1,3 @@
-from functools import partial
-
-from dqn.policies import mlp_features, cnn_features
-
 default_config = dict(
     batch_size=32,
     gamma=1.0,
@@ -11,7 +7,7 @@ default_config = dict(
     log_every_n_steps=100,
     checkpoint_every_n_steps=1000,
     n_env_steps_per_rl_update=1,
-    buffer_size=50000,
+    buffer_size=50_000,
     lr=5e-4,
     render=False,
     env_id='CartPole-v0',
@@ -20,17 +16,17 @@ default_config = dict(
     double_dqn=True,
     dueling=True,
     prioritized=True,
-    feature_extractor=partial(mlp_features, n_hidden=(64, 64)),
+    features='mlp',
     gradient_clip=10
 )
 
 atari_config = dict(
     gamma=0.99,
-    n_start_steps=10000,
+    n_start_steps=10_000,
     update_target_every_n_steps=1000,
     n_env_steps_per_rl_update=4,
-    buffer_size=10000,
+    buffer_size=10_000,
     lr=1e-4,
-    feature_extractor=cnn_features,
+    feature_extractor='cnn',
     train_n_steps=1e7
 )

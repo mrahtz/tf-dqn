@@ -11,7 +11,7 @@ from sacred.observers import FileStorageObserver
 import dqn.config as config
 from dqn.env import make_env
 from dqn.model import Model
-from dqn.policies import make_policy, cnn_features
+from dqn.policies import make_policy, cnn_features, mlp_features
 from dqn.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from dqn.utils import tf_disable_warnings, tf_disable_deprecation_warnings, RateMeasure
 
@@ -99,11 +99,18 @@ def run_test_env(model, model_load_dir, render, env_id, seed, log_dir):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, gradient_clip, render, seed, env_id, double_dqn, dueling, prioritized, feature_extractor):
+def main(gamma, buffer_size, lr, gradient_clip, render, seed, env_id, double_dqn, dueling, prioritized, features):
     env = make_env(env_id, seed, observer.dir, 'train')
 
-    if isinstance(env.unwrapped, AtariEnv) and feature_extractor != cnn_features:
-        raise Exception("Atari envs must use atari_config")
+    if isinstance(env.unwrapped, AtariEnv) and features != 'cnn':
+        raise Exception("Atari environments must use atari_config")
+
+    if features == 'mlp':
+        feature_extractor = partial(mlp_features, n_hidden=(64, 64))
+    elif features == 'cnn':
+        feature_extractor = cnn_features
+    else:
+        raise Exception(f"Invalid features network: '{features}'")
 
     policy_fn = partial(make_policy, feature_extractor=feature_extractor, dueling=dueling)
 

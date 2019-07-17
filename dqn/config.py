@@ -17,7 +17,9 @@ default_config = dict(
     dueling=True,
     prioritized=True,
     features='mlp',
-    gradient_clip=10
+    gradient_clip=10,
+    async_test=False,
+    test_every_n_steps=5000,
 )
 
 # Hyperparams from

@@ -154,12 +154,13 @@ class Unit(unittest.TestCase):
 
 class EndToEnd(unittest.TestCase):
     def test_cartpole(self):
-        run = train.ex.run(config_updates={'train_n_steps': 5_000,
-                                           'seed': 1,
+        run = train.ex.run(config_updates={'train_n_steps': 20_000,
+                                           'lr': 4e-4,
+                                           'seed': 0,
                                            'features': 'mlp',
                                            'dueling': False,
                                            'double_dqn': False,
-                                           'lr': 4e-4})
+                                           'prioritized': False})
         model = run.result
 
         env = gym.make('CartPole-v0')

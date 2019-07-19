@@ -150,5 +150,6 @@ def main(gamma, buffer_size, lr, gradient_clip, seed, env_id, double_dqn, duelin
 
     train_dqn(buffer, model, train_env, test_env)
 
-    test_env_proc.terminate()
+    if test_env_proc:
+        test_env_proc.terminate()
     return model

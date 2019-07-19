@@ -132,9 +132,9 @@ def main(gamma, buffer_size, lr, gradient_clip, seed, env_id, double_dqn, duelin
     policy_fn = partial(Policy, features_cls=features_cls, dueling=dueling)
 
     if prioritized:
-        buffer = ReplayBuffer(train_env.observation_space.shape, max_size=buffer_size)
-    else:
         buffer = PrioritizedReplayBuffer(train_env.observation_space.shape, max_size=buffer_size)
+    else:
+        buffer = ReplayBuffer(train_env.observation_space.shape, max_size=buffer_size)
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
                   discount=gamma, lr=lr, gradient_clip=gradient_clip, seed=seed, double_dqn=double_dqn)

@@ -2,7 +2,8 @@
 default_config = dict(
     batch_size=32,
     gamma=0.99,
-    random_action_prob=0.1,
+    random_action_prob_initial=0.1,
+    random_action_prob_final=0.01,
     n_start_steps=1_000,
     update_target_every_n_steps=500,
     log_every_n_steps=100,
@@ -20,7 +21,6 @@ default_config = dict(
     features='mlp',
     gradient_clip=10,
     async_test=False,
-    test_every_n_steps=5_000,
 )
 
 # https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/deepq/experiments/run_atari.py

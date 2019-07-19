@@ -94,7 +94,7 @@ class Unit(unittest.TestCase):
         buf = PrioritizedReplayBuffer(obs_shape=(), max_size=3, beta0=beta0)
         tds = [1, 2, 3]
         for td in tds:
-            UnitTests._store_in_buf_with_td(buf, td, td)
+            Unit._store_in_buf_with_td(buf, td, td)
 
         samples = []
         n_samples = 10000

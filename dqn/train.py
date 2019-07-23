@@ -32,7 +32,7 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
               batch_size, n_start_steps, update_target_every_n_steps, log_every_n_steps, checkpoint_every_n_steps,
               random_action_prob_initial, random_action_prob_final, train_n_steps, n_env_steps_per_rl_update):
     obs1, done = env.reset(), False
-    logger = easy_tf_log.Logger(os.path.join(observer.dir, 'dqn'))
+    logger = easy_tf_log.Logger(os.path.join(observer.dir))
     n_steps, episode_reward = 0, 0
     step_rate_measure = RateMeasure(n_steps)
     losses = []
@@ -42,6 +42,7 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
                               - (random_action_prob_initial - random_action_prob_final) * n_steps / train_n_steps)
         act = model.step(obs1, random_action_prob)
         obs2, reward, done, info = env.step(act)
+        episode_reward += reward
         if isinstance(buffer, PrioritizedReplayBuffer):
             td = model.calculate_td(obs1=obs1, act=act, reward=reward, obs2=obs2, done=done)
             buffer.store_with_td(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done), td=td)
@@ -88,7 +89,7 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
 def async_test_episodes_loop(model, model_load_dir, env_id, seed, log_dir):
     env = gym.make(env_id)
     env.seed(seed)
-    logger = easy_tf_log.Logger(log_dir)
+    logger = easy_tf_log.Logger(os.path.join(log_dir, 'test_loop'))
     while True:
         model.load(model_load_dir)
         run_test_episodes(model, env, n_episodes=1, logger=logger, render=True)

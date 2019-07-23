@@ -30,6 +30,6 @@ atari_config = dict(
     update_target_every_n_steps=1_000,
     n_start_steps=10_000,
     n_env_steps_per_rl_update=4,
-    train_n_steps=1e7,
+    train_n_steps=2e6,
     features='cnn',
 )

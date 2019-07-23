@@ -85,6 +85,15 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
         n_steps += 1
 
 
+def async_test_episodes_loop(model, model_load_dir, env_id, seed, log_dir):
+    env = gym.make(env_id)
+    env.seed(seed)
+    logger = easy_tf_log.Logger(log_dir)
+    while True:
+        model.load(model_load_dir)
+        run_test_episodes(model, env, n_episodes=1, logger=logger, render=True)
+
+
 def run_test_episodes(model, env, n_episodes, logger, render):
     episodes_reward = []
     for _ in range(n_episodes):
@@ -101,15 +110,6 @@ def run_test_episodes(model, env, n_episodes, logger, render):
     print("Test episodes done; mean reward {:.1f}".format(mean_reward))
     sys.stdout.flush()
     logger.logkv('env_test/episode_reward', mean_reward)
-
-
-def async_test_episodes_loop(model, model_load_dir, env_id, seed, log_dir):
-    env = gym.make(env_id)
-    env.seed(seed)
-    logger = easy_tf_log.Logger(log_dir)
-    while True:
-        model.load(model_load_dir)
-        run_test_episodes(model, env, n_episodes=1, logger=logger, render=True)
 
 
 @ex.automain

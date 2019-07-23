@@ -154,8 +154,8 @@ class Unit(unittest.TestCase):
 
 class EndToEnd(unittest.TestCase):
     def test_cartpole(self):
-        run = train.ex.run(config_updates={'train_n_steps': 20_000,
-                                           'lr': 4e-4,
+        run = train.ex.run(config_updates={'train_n_steps': 30_000,
+                                           'lr': 1e-3,
                                            'seed': 0,
                                            'features': 'mlp',
                                            'dueling': False,

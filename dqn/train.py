@@ -51,7 +51,7 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
             buffer.store(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done))
         obs1 = obs2
         if done:
-            logger.logkv('env_train/reward', episode_reward)
+            logger.logkv('env_train/episode_reward', episode_reward)
             episode_reward = 0
             obs1, done = env.reset(), False
 

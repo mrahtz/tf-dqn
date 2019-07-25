@@ -132,7 +132,7 @@ class Unit(unittest.TestCase):
     @staticmethod
     def _get_model():
         policy_fn = partial(Policy, features_cls=MLPFeatures, dueling=False)
-        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double_dqn=False,
+        model = Model(obs_shape=(1,), n_actions=2, lr=1e-3, seed=0, discount=0.99, double=False,
                       policy_fn=policy_fn, gradient_clip=10)
         return model
 
@@ -159,7 +159,7 @@ class EndToEnd(unittest.TestCase):
                                            'seed': 0,
                                            'features': 'mlp',
                                            'dueling': False,
-                                           'double_dqn': False,
+                                           'double': False,
                                            'prioritized': False})
         model = run.result
 

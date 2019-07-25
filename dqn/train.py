@@ -114,7 +114,7 @@ def run_test_episodes(model, env, n_episodes, logger, render):
 
 
 @ex.automain
-def main(gamma, buffer_size, lr, gradient_clip, seed, env_id, double_dqn, dueling, prioritized,
+def main(gamma, buffer_size, lr, gradient_clip, seed, env_id, double, dueling, prioritized,
          features, async_test):
     env = make_env(env_id, seed)
     n_actions = env.action_space.n
@@ -137,7 +137,7 @@ def main(gamma, buffer_size, lr, gradient_clip, seed, env_id, double_dqn, duelin
         buffer = ReplayBuffer(env.observation_space.shape, max_size=buffer_size)
     ckpt_dir = os.path.join(observer.dir, 'checkpoints')
     model = Model(policy_fn=policy_fn, obs_shape=obs_shape, n_actions=n_actions, save_dir=ckpt_dir,
-                  discount=gamma, lr=lr, gradient_clip=gradient_clip, seed=seed, double_dqn=double_dqn)
+                  discount=gamma, lr=lr, gradient_clip=gradient_clip, seed=seed, double=double)
     model.save()
 
     if async_test:

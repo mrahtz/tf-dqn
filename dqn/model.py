@@ -10,7 +10,7 @@ from dqn.utils import tensor_index, huber_loss
 
 class Model:
 
-    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, lr, gradient_clip, double_dqn, save_dir=None):
+    def __init__(self, policy_fn, obs_shape, n_actions, seed, discount, lr, gradient_clip, double, save_dir=None):
         self.save_args(locals())
         self.n_actions = n_actions
         self.save_dir = save_dir
@@ -47,7 +47,7 @@ class Model:
 
             q1_main = tensor_index(q1s_main, acts_ph)
             assert q1_main.shape.as_list() == [None]
-            if double_dqn:
+            if double:
                 # Double DQN: we choose the action using the main network,
                 # but evaluate it using the target network
                 a = tf.argmax(q2s_main, axis=1)

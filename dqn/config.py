@@ -2,7 +2,7 @@
 default_config = dict(
     batch_size=32,
     gamma=0.99,
-    random_action_prob_initial=0.1,
+    random_action_prob_anneal_frac=0.1,
     random_action_prob_final=0.01,
     n_start_steps=1_000,
     update_target_every_n_steps=500,

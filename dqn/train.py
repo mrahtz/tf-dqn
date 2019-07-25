@@ -30,7 +30,7 @@ ex.add_named_config('atari_config', config.atari_config)
 @ex.capture
 def train_dqn(buffer: ReplayBuffer, model: Model, env,
               batch_size, n_start_steps, update_target_every_n_steps, log_every_n_steps, checkpoint_every_n_steps,
-              random_action_prob_initial, random_action_prob_final, train_n_steps, n_env_steps_per_rl_update):
+              random_action_prob_anneal_frac, random_action_prob_final, train_n_steps, n_env_steps_per_rl_update):
     obs1, done = env.reset(), False
     logger = easy_tf_log.Logger(os.path.join(observer.dir))
     n_steps, episode_reward = 0, 0
@@ -38,8 +38,10 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
     losses = []
 
     while n_steps < train_n_steps:
-        random_action_prob = (random_action_prob_initial
-                              - (random_action_prob_initial - random_action_prob_final) * n_steps / train_n_steps)
+        anneal_final_step = train_n_steps * random_action_prob_anneal_frac
+        anneal_frac = np.minimum(1, n_steps / anneal_final_step)
+        random_action_prob = 1 - anneal_frac * (1 - random_action_prob_final)
+
         act = model.step(obs1, random_action_prob)
         obs2, reward, done, info = env.step(act)
         episode_reward += reward

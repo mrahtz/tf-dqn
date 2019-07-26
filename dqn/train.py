@@ -44,7 +44,10 @@ def train_dqn(buffer: ReplayBuffer, model: Model, env,
 
         act = model.step(obs1, random_action_prob)
         obs2, reward, done, info = env.step(act)
-        episode_reward += reward
+        try:
+            episode_reward += info['unclipped_reward']
+        except KeyError:
+            episode_reward += reward
         if isinstance(buffer, PrioritizedReplayBuffer):
             td = model.calculate_td(obs1=obs1, act=act, reward=reward, obs2=obs2, done=done)
             buffer.store_with_td(obs1=obs1, acts=act, rews=reward, obs2=obs2, done=float(done), td=td)

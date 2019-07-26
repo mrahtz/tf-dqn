@@ -4,7 +4,7 @@ import cv2
 import gym
 import numpy as np
 from gym import spaces
-from gym.core import Wrapper, ObservationWrapper, RewardWrapper
+from gym.core import Wrapper, ObservationWrapper
 from gym.envs.atari import AtariEnv
 from gym.spaces import Box
 
@@ -162,13 +162,16 @@ class NormalizeObservationsWrapper(ObservationWrapper):
         return obs / 255.0
 
 
-class ClipRewardsWrapper(RewardWrapper):
+class ClipRewardsWrapper(Wrapper):
     """
     Clip rewards to range [-1, +1].
     """
 
-    def reward(self, reward):
-        return np.clip(reward, -1, +1)
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        info['unclipped_reward'] = reward
+        reward = np.clip(reward, -1, +1)
+        return obs, reward, done, info
 
 
 class EndEpisodeOnLifeLossWrapper(Wrapper):

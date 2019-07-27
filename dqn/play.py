@@ -7,14 +7,15 @@ from dqn.model import Model
 from dqn.policies import CNNFeatures, Policy
 
 parser = argparse.ArgumentParser()
+parser.add_argument('env_id')
 parser.add_argument('ckpt_dir')
 args = parser.parse_args()
 
-env = make_env('PongNoFrameskip-v4', seed=0)
+env = make_env(args.env_id, seed=0)
 
-policy_fn = partial(Policy, features_cls=CNNFeatures, dueling=False)
+policy_fn = partial(Policy, features_cls=CNNFeatures, dueling=True)
 model = Model(policy_fn=policy_fn, obs_shape=env.observation_space.shape, n_actions=env.action_space.n,
-              discount=0.99, lr=1e-5, gradient_clip=10, seed=0, double=False)
+              discount=0.99, lr=1e-5, gradient_clip=10, seed=0, double=True)
 model.load(args.ckpt_dir)
 
 while True:

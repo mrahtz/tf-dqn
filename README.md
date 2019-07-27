@@ -4,12 +4,20 @@
 
 TensorFlow implementation of Deep Q-learning. Implements:
  
-* Vanilla DQN, from [Human-level control through deep reinforcement learning](https://www.nature.com/articles/nature14236)
+* [Vanilla DQN](https://www.nature.com/articles/nature14236)
 * [Prioritized Experience Replay](https://arxiv.org/abs/1511.05952)
 * [Dueling DQN](https://arxiv.org/abs/1511.06581)
 * [Double DQN](https://arxiv.org/abs/1509.06461)
 
-Tested on simple environments like CartPole and LunarLander as well as Atari games like Pong and Space Invaders.
+## Results
+
+Testing on Breakout across three seeds:
+
+![](images/breakout_reward.png)
+
+A cherry-picked episode:
+
+![](images/breakout.gif)
 
 ## Setup
 
@@ -32,8 +40,6 @@ $ python3 -m dqn.train with atari_config env_id=PongNoFrameSkip-v4 dueling=False
 ```
 
 TensorBoard logs will be saved in a subdirectory inside the automatically-created `runs` directory.
-To watch videos of the current agent trying to play the game while training, use `render=True`.
-(These are generated in a separate process, so won't slow down the main training loop.)
 
 ## Implementation gotchas
 
@@ -51,7 +57,7 @@ the observations have the right scale right at the point they enter the network.
 
 ## Tests
 
-To run smoke tests, unit tests and an end-to-end test, respctively:
+To run smoke tests, unit tests and an end-to-end test on Cartpole, respectively:
 
 ```bash
 $ python tests.py Smoke

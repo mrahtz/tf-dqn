@@ -88,10 +88,12 @@ def plot_env(env_id, events_by_seed, config):
 
     escaped_env_name = escape_env_name(env_id)
     fig_name = escaped_env_name
-    if config['double_dqn']:
+    if config['double']:
         fig_name += '_double'
     if config['dueling']:
         fig_name += '_dueling'
+    if config['prioritized']:
+        fig_name += '_prioritized'
     fig_filename = fig_name + '.png'
     savefig(fig_filename, dpi=300, bbox_inches='tight')
 
@@ -102,7 +104,7 @@ def get_rewards_by_step(events):
     step_timestamps, steps = zip(*events['dqn/n_steps'])
     step_timestamps = np.array(step_timestamps)
     rewards_by_step = []
-    for timestamp, reward in events['env_train/reward']:
+    for timestamp, reward in events['env_train/episode_reward']:
         if timestamp > step_timestamps[-1]:
             break
         step_idx = np.argwhere(step_timestamps > timestamp)[0, 0] - 1

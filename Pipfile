@@ -8,7 +8,7 @@ matplotlib = "*"
 
 [packages]
 gym = {extras = ["atari"],version = "==0.13.1"}
-tensorflow = "==1.13.1"
+tensorflow = "==1.15.2"
 sacred = "==0.7.5"
 easy-tf-log = "==1.10"
 cloudpickle = "*"
